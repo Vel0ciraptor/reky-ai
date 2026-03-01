@@ -1,0 +1,183 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Roles
+enum Role {
+  admin
+  agencia
+  agente
+}
+
+// Property Types
+enum PropertyType {
+  venta
+  alquiler
+  anticretico
+}
+
+// Agency request types & status
+enum AgencyRequestType {
+  request
+  invitation
+}
+
+enum AgencyRequestStatus {
+  pending
+  accepted
+  rejected
+}
+
+model Agent {
+  id               String           @id @default(uuid())
+  name             String
+  lastName         String           @map("last_name")
+  email            String           @unique
+  password         String
+  phone            String
+  role             Role             @default(agente)
+  agencyId         String?          @map("agency_id")
+  agency           Agency?          @relation(fields: [agencyId], references: [id])
+  avatarUrl        String?          @map("avatar_url")
+  identityFront    String?          @map("identity_front")
+  identityBack     String?          @map("identity_back")
+  emailVerified    Boolean          @default(false) @map("email_verified")
+  verificationCode String?          @map("verification_code")
+  
+  verified         Boolean          @default(false)
+  points           Int              @default(0)
+  createdAt        DateTime         @default(now()) @map("created_at")
+  
+  properties       PropertyAgent[]
+  tagsCreated      Tag[]
+  sentMessages     Message[]        @relation("SentMessages")
+  receivedMessages Message[]        @relation("ReceivedMessages")
+  transactions     Transaction[]
+  wallet           Wallet?
+  agencyRequests   AgencyRequest[]  @relation("AgentRequests")
+}
+
+model Agency {
+  id        String           @id @default(uuid())
+  name      String
+  logoUrl   String?          @map("logo_url")
+  createdAt DateTime         @default(now()) @map("created_at")
+  agents    Agent[]
+  requests  AgencyRequest[]  @relation("AgencyRequests")
+}
+
+model AgencyRequest {
+  id        String              @id @default(uuid())
+  agentId   String              @map("agent_id")
+  agent     Agent               @relation("AgentRequests", fields: [agentId], references: [id])
+  agencyId  String              @map("agency_id")
+  agency    Agency              @relation("AgencyRequests", fields: [agencyId], references: [id])
+  type      AgencyRequestType
+  status    AgencyRequestStatus @default(pending)
+  createdAt DateTime            @default(now()) @map("created_at")
+
+  @@unique([agentId, agencyId])
+}
+
+model Property {
+  id                 String          @id @default(uuid())
+  matricula          String          @unique
+  descripcion        String
+  ubicacion          String
+  tipo               PropertyType
+  precio             Decimal
+  dormitorios        Int
+  banos              Int
+  estacionamiento    Boolean         @default(false)
+  patio              Boolean         @default(false)
+  piscina            Boolean         @default(false)
+  mascotas           Boolean         @default(false)
+  tipoVivienda       String?         @map("tipo_vivienda")
+  terreno            Float?
+  construccion       Float?
+  alquilado          Boolean         @default(false)
+  tiempoAlquiler     Int?            @map("tiempo_alquiler")
+  tiempoAnticretico  Int?            @map("tiempo_anticretico")
+  lat                Float?
+  lng                Float?
+  createdAt          DateTime        @default(now()) @map("created_at")
+  
+  agents             PropertyAgent[]
+  tags               PropertyTag[]
+  transactions       Transaction[]
+  images             PropertyImage[]
+
+  @@index([lat, lng])
+}
+
+model PropertyImage {
+  id         String   @id @default(uuid())
+  propertyId String   @map("property_id")
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  url        String
+  orden      Int      @default(0)
+  createdAt  DateTime @default(now()) @map("created_at")
+}
+
+model PropertyAgent {
+  id           String   @id @default(uuid())
+  propertyId   String   @map("property_id")
+  property     Property @relation(fields: [propertyId], references: [id])
+  agentId      String   @map("agent_id")
+  agent        Agent    @relation(fields: [agentId], references: [id])
+  enCoventa    Boolean  @default(false) @map("en_coventa")
+  promocionado Boolean  @default(false)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@unique([propertyId, agentId])
+}
+
+model Tag {
+  id        String        @id @default(uuid())
+  name      String        @unique
+  createdBy String?       @map("created_by")
+  creator   Agent?        @relation(fields: [createdBy], references: [id])
+  properties PropertyTag[]
+}
+
+model PropertyTag {
+  propertyId String @map("property_id")
+  property   Property @relation(fields: [propertyId], references: [id])
+  tagId      String @map("tag_id")
+  tag        Tag @relation(fields: [tagId], references: [id])
+
+  @@id([propertyId, tagId])
+}
+
+model Message {
+  id         String   @id @default(uuid())
+  senderId   String   @map("sender_id")
+  sender     Agent    @relation("SentMessages", fields: [senderId], references: [id])
+  receiverId String   @map("receiver_id")
+  receiver   Agent    @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  content    String
+  createdAt  DateTime @default(now()) @map("created_at")
+}
+
+model Transaction {
+  id         String       @id @default(uuid())
+  agentId    String       @map("agent_id")
+  agent      Agent        @relation(fields: [agentId], references: [id])
+  propertyId String       @map("property_id")
+  property   Property     @relation(fields: [propertyId], references: [id])
+  tipo       PropertyType
+  fecha      DateTime     @default(now())
+  verificado Boolean      @default(false)
+}
+
+model Wallet {
+  id      String  @id @default(uuid())
+  agentId String  @unique @map("agent_id")
+  agent   Agent   @relation(fields: [agentId], references: [id])
+  balance Decimal @default(0)
+}
