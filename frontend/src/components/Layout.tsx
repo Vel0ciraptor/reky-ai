@@ -20,20 +20,9 @@ const Layout = ({ children }: LayoutProps) => {
 
     return (
         <div className="min-h-screen bg-bg-dark flex flex-col">
-            {/* Top header — Logo only, minimal */}
-            <header className="fixed top-0 left-0 right-0 z-40 px-4 py-3 flex items-center justify-between bg-bg-dark/60 backdrop-blur-xl border-b border-glass-border">
-                <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 bg-accent-orange rounded-xl flex items-center justify-center font-bold text-lg leading-none">R</div>
-                    <span className="text-lg font-bold tracking-tight">Reky AI</span>
-                </div>
-                {/* Optional: breadcrumb / page title */}
-                <span className="text-sm text-gray-500 capitalize">
-                    {navItems.find(i => i.path === location.pathname)?.name ?? ''}
-                </span>
-            </header>
 
-            {/* Main Content — padded top for header, bottom for navbar */}
-            <main className="flex-1 pt-16 pb-28 overflow-hidden">
+            {/* Main Content — padded bottom for navbar */}
+            <main className="flex-1 pt-4 pb-28 overflow-hidden">
                 <div className="h-full">
                     {children}
                 </div>

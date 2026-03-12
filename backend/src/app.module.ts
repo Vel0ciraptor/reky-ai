@@ -12,6 +12,7 @@ import { WalletModule } from './modules/wallet/wallet.module';
 import { RankingModule } from './modules/ranking/ranking.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { DatabaseModule } from './infra/database/database.module';
+import { RequirementsModule } from './modules/requirements/requirements.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { DatabaseModule } from './infra/database/database.module';
     WalletModule,
     RankingModule,
     AdminModule,
+    RequirementsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

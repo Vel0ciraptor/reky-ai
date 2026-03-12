@@ -60,6 +60,7 @@ model Agent {
   transactions     Transaction[]
   wallet           Wallet?
   agencyRequests   AgencyRequest[]  @relation("AgentRequests")
+  requirements     Requirement[]
 }
 
 model Agency {
@@ -181,3 +182,42 @@ model Wallet {
   agent   Agent   @relation(fields: [agentId], references: [id])
   balance Decimal @default(0)
 }
+
+model Requirement {
+  id                String        @id @default(uuid())
+  agentId           String        @map("agent_id")
+  agent             Agent         @relation(fields: [agentId], references: [id])
+
+  // Basic info
+  description       String
+  propertyType      PropertyType? @map("property_type")
+  tipoVivienda      String?       @map("tipo_vivienda")
+  ubicacion         String?
+
+  // Budget
+  minBudget         Decimal?      @map("min_budget")
+  maxBudget         Decimal?      @map("max_budget")
+
+  // Characteristics
+  dormitorios       Int?
+  banos             Int?
+  estacionamiento   Boolean?      @default(false)
+  patio             Boolean?      @default(false)
+  piscina           Boolean?      @default(false)
+  mascotas          Boolean?      @default(false)
+
+  // Dimensions
+  terreno           Float?
+  construccion      Float?
+
+  // Duration (for alquiler/anticretico)
+  tiempoAlquiler    Int?          @map("tiempo_alquiler")
+  tiempoAnticretico Int?          @map("tiempo_anticretico")
+
+  // Tags
+  tags              String[]
+
+  createdAt         DateTime      @default(now()) @map("created_at")
+}
+
+

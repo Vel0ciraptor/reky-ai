@@ -472,30 +472,30 @@ export default function SearchPage() {
     const [initialBoundsConfigured, setInitialBoundsConfigured] = useState(false);
     const [searchBounds, setSearchBounds] = useState<L.LatLngBounds | null>(null);
     const [hoverBounds, setHoverBounds] = useState<L.LatLngBounds | null>(null);
-
-    const hasBoundsMoved = () => {
-        if (!searchBounds || !hoverBounds) return false;
-        // Check if there's a significant difference between the bounding boxes
-        const latDiff = Math.abs(searchBounds.getCenter().lat - hoverBounds.getCenter().lat);
-        const lngDiff = Math.abs(searchBounds.getCenter().lng - hoverBounds.getCenter().lng);
-        // Tolerate small movements
-        return latDiff > 0.005 || lngDiff > 0.005;
-    };
-
-    const showSearchHereButton = hasBoundsMoved();
+    // Controls whether the property list panel is visible
+    const [showList, setShowList] = useState(false);
+    const [isSearchPending, setIsSearchPending] = useState(false);
 
     const applySearchHere = () => {
         if (hoverBounds) {
             setSearchBounds(hoverBounds);
+            setIsSearchPending(false);
         }
     };
 
-    // Initialize searchBounds on first load when map bounds are available
+    // When map moves, mark pending
+    const handleBoundsChange = (b: L.LatLngBounds) => {
+        setHoverBounds(b);
+        setIsSearchPending(true);
+    };
+
+    // Initialize bounds on first load
     useEffect(() => {
         if (initialBoundsConfigured && !searchBounds && hoverBounds) {
             setSearchBounds(hoverBounds);
         }
     }, [initialBoundsConfigured, searchBounds, hoverBounds]);
+
 
     const handleSearch = () => {
         setQ(inputValue);
@@ -541,13 +541,12 @@ export default function SearchPage() {
     const { data: properties = [], isLoading, isFetching } = useQuery({
         queryKey: ['properties', q, tipo, dormitorios, banos, priceRange, priceMode, exactPrice, mascotas, estacionamiento, patio, piscina, tipoVivienda, terrenoMin, terrenoMax, construccionMin, construccionMax, searchBounds?.toBBoxString()],
         queryFn: async () => {
-            // Don't search if bounds aren't ready to prevent massive initial queries
             if (!searchBounds) return [];
             try { const r = await api.get(`/search?${new URLSearchParams(buildParams())}`); return r.data; }
             catch { return []; }
         },
         staleTime: 60000,
-        enabled: !!searchBounds, // Only fetch when bounding box is captured
+        enabled: !!searchBounds, // Auto-fetch, markers always visible on map
     });
 
     const handleImageSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -582,87 +581,111 @@ export default function SearchPage() {
             {/* ── DESKTOP (hidden on mobile) ── */}
             <div className="hidden md:flex w-full h-full gap-0">
 
-                {/* Left sidebar panel */}
-                <div className="w-96 flex-shrink-0 flex flex-col border-r border-glass-border overflow-hidden relative z-10"
-                    style={{ background: 'rgba(11,11,15,0.98)' }}>
-
-                    {/* Sidebar header */}
-                    <div className="flex-shrink-0 p-4 border-b border-glass-border">
-                        <SearchBar
-                            inputValue={inputValue} setInputValue={setInputValue}
-                            handleSearch={handleSearch} handleKeyDown={handleKeyDown}
-                            q={q} setQ={setQ} showFilters={showFilters} setShowFilters={setShowFilters}
-                            hasActiveFilters={hasActiveFilters} fileInputRef={fileInputRef}
-                            handleImageSearch={handleImageSearch} setFlyTo={setFlyTo}
-                        />
-                        <AnimatePresence>
-                            {showFilters && (
-                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
-                                    exit={{ opacity: 0, height: 0 }} className="overflow-hidden mt-3">
-                                    <FiltersPanel
-                                        tipo={tipo} setTipo={setTipo} dormitorios={dormitorios} setDormitorios={setDormitorios} banos={banos} setBanos={setBanos}
-                                        priceRange={priceRange} setPriceRange={setPriceRange} priceMode={priceMode} setPriceMode={setPriceMode}
-                                        exactPrice={exactPrice} setExactPrice={setExactPrice}
-                                        mascotas={mascotas} setMascotas={setMascotas} estacionamiento={estacionamiento} setEstacionamiento={setEstacionamiento} patio={patio} setPatio={setPatio} piscina={piscina} setPiscina={setPiscina}
-                                        tipoVivienda={tipoVivienda} setTipoVivienda={setTipoVivienda} terrenoMin={terrenoMin} setTerrenoMin={setTerrenoMin} terrenoMax={terrenoMax} setTerrenoMax={setTerrenoMax}
-                                        construccionMin={construccionMin} setConstruccionMin={setConstruccionMin} construccionMax={construccionMax} setConstruccionMax={setConstruccionMax}
-                                        clearFilters={clearFilters} hasActiveFilters={hasActiveFilters} />
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                        <div className="flex items-center justify-between mt-3">
-                            <div className="flex items-center gap-2">
-                                <MapPin size={12} className="text-accent-orange" />
-                                <span className="text-xs text-gray-500">
-                                    {isLoading ? 'Buscando...' : `${properties.length} propiedades encontradas`}
-                                </span>
-                                {tipo && <span className={`text-[10px] px-2 py-0.5 rounded-full border capitalize ${tipoColor[tipo] || ''}`}>{tipo}</span>}
+                {/* Left sidebar panel — collapsible */}
+                <AnimatePresence>
+                    {showList && (
+                        <motion.div
+                            initial={{ x: -380, opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            exit={{ x: -380, opacity: 0 }}
+                            transition={{ type: 'spring', stiffness: 300, damping: 32 }}
+                            className="w-96 flex-shrink-0 flex flex-col border-r border-glass-border overflow-hidden relative z-10"
+                            style={{ background: 'rgba(11,11,15,0.98)' }}
+                        >
+                            {/* Sidebar header */}
+                            <div className="flex-shrink-0 p-4 border-b border-glass-border">
+                                <div className="flex items-center justify-between mb-3">
+                                    <span className="text-sm font-semibold">Propiedades ({properties.length})</span>
+                                    <button onClick={() => setShowList(false)} className="text-gray-500 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors">
+                                        <X size={14} />
+                                    </button>
+                                </div>
+                                <SearchBar
+                                    inputValue={inputValue} setInputValue={setInputValue}
+                                    handleSearch={handleSearch} handleKeyDown={handleKeyDown}
+                                    q={q} setQ={setQ} showFilters={showFilters} setShowFilters={setShowFilters}
+                                    hasActiveFilters={hasActiveFilters} fileInputRef={fileInputRef}
+                                    handleImageSearch={handleImageSearch} setFlyTo={setFlyTo}
+                                />
+                                <AnimatePresence>
+                                    {showFilters && (
+                                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+                                            exit={{ opacity: 0, height: 0 }} className="overflow-hidden mt-3">
+                                            <FiltersPanel
+                                                tipo={tipo} setTipo={setTipo} dormitorios={dormitorios} setDormitorios={setDormitorios} banos={banos} setBanos={setBanos}
+                                                priceRange={priceRange} setPriceRange={setPriceRange} priceMode={priceMode} setPriceMode={setPriceMode}
+                                                exactPrice={exactPrice} setExactPrice={setExactPrice}
+                                                mascotas={mascotas} setMascotas={setMascotas} estacionamiento={estacionamiento} setEstacionamiento={setEstacionamiento} patio={patio} setPatio={setPatio} piscina={piscina} setPiscina={setPiscina}
+                                                tipoVivienda={tipoVivienda} setTipoVivienda={setTipoVivienda} terrenoMin={terrenoMin} setTerrenoMin={setTerrenoMin} terrenoMax={terrenoMax} setTerrenoMax={terrenoMax}
+                                                construccionMin={construccionMin} setConstruccionMin={setConstruccionMin} construccionMax={construccionMax} setConstruccionMax={construccionMax}
+                                                clearFilters={clearFilters} hasActiveFilters={hasActiveFilters} />
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                                <div className="flex items-center justify-between mt-3">
+                                    <div className="flex items-center gap-2">
+                                        <MapPin size={12} className="text-accent-orange" />
+                                        <span className="text-xs text-gray-500">
+                                            {isLoading ? 'Buscando...' : `${properties.length} propiedades`}
+                                        </span>
+                                        {tipo && <span className={`text-[10px] px-2 py-0.5 rounded-full border capitalize ${tipoColor[tipo] || ''}`}>{tipo}</span>}
+                                    </div>
+                                    {isFetching && <LoaderSpinner />}
+                                </div>
                             </div>
-                            {isFetching && <LoaderSpinner />}
-                        </div>
-                    </div>
 
-                    {/* Sidebar property list — beautifully scrollable grid */}
-                    <div className="flex-1 overflow-y-auto p-3">
-                        {isLoading && !properties.length ? (
-                            <div className="flex items-center justify-center h-32 text-gray-600 text-sm">Cargando zona actual...</div>
-                        ) : properties.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-32 text-gray-600 text-sm gap-2">
-                                <Search size={22} className="opacity-30" />
-                                Sin resultados en esta zona
+                            {/* Sidebar property list */}
+                            <div className="flex-1 overflow-y-auto p-3">
+                                {isLoading && !properties.length ? (
+                                    <div className="flex items-center justify-center h-32 text-gray-600 text-sm">Cargando zona actual...</div>
+                                ) : properties.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center h-32 text-gray-600 text-sm gap-2">
+                                        <Search size={22} className="opacity-30" />
+                                        Sin resultados en esta zona
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col gap-2.5">
+                                        {properties.map((p: any) => (
+                                            <PropertyCard key={p.id} p={p} selected={selected?.id === p.id}
+                                                onClick={() => selectProperty(p)} layout="sidebar" />
+                                        ))}
+                                    </div>
+                                )}
                             </div>
-                        ) : (
-                            <div className="flex flex-col gap-2.5">
-                                {properties.map((p: any) => (
-                                    <PropertyCard key={p.id} p={p} selected={selected?.id === p.id}
-                                        onClick={() => selectProperty(p)} layout="sidebar" />
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
-                {/* Right map area — fills remaining space, must be relative+h-full for Leaflet */}
+                {/* Right map area */}
                 <div className="flex-1 relative h-full">
                     <MapArea properties={properties} flyTo={flyTo} selectProperty={selectProperty}
-                        setInitialBoundsConfigured={setInitialBoundsConfigured} setHoverBounds={setHoverBounds}
+                        setInitialBoundsConfigured={setInitialBoundsConfigured} setHoverBounds={handleBoundsChange}
                         className="absolute inset-0 z-0" />
 
-                    {/* "Search Here" button for Desktop */}
-                    <AnimatePresence>
-                        {showSearchHereButton && (
-                            <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -20, opacity: 0 }}
-                                className="absolute top-4 left-1/2 -translate-x-1/2 z-[500]">
-                                <button
-                                    onClick={applySearchHere}
-                                    className="bg-accent-orange hover:bg-orange-600 text-white shadow-xl shadow-orange-500/20 px-5 py-2.5 rounded-full text-sm font-semibold flex items-center gap-2 transition-all active:scale-95 border border-orange-400"
-                                >
-                                    <RefreshCw size={14} className={isFetching ? 'animate-spin' : ''} />
-                                    Buscar en esta zona
-                                </button>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                    {/* "Buscar aquí" — always visible */}
+                    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[500]">
+                        <button
+                            onClick={applySearchHere}
+                            className={`shadow-xl px-5 py-2.5 rounded-full text-sm font-semibold flex items-center gap-2 transition-all active:scale-95 border ${isSearchPending
+                                ? 'bg-accent-orange hover:bg-orange-600 text-white border-orange-400 shadow-orange-500/20'
+                                : 'bg-bg-dark/90 text-gray-300 border-glass-border hover:border-accent-orange hover:text-accent-orange'
+                                }`}
+                        >
+                            <RefreshCw size={14} className={isFetching ? 'animate-spin' : ''} />
+                            {isSearchPending ? 'Buscar en esta zona' : 'Buscar aquí'}
+                        </button>
+                    </div>
+
+                    {/* Toggle list button */}
+                    {!showList && (
+                        <button
+                            onClick={() => setShowList(true)}
+                            className="absolute top-4 left-4 z-[500] bg-bg-dark/90 border border-glass-border text-gray-300 hover:text-white hover:border-accent-orange px-4 py-2.5 rounded-full text-sm font-semibold flex items-center gap-2 transition-all shadow-xl"
+                        >
+                            <ChevronUp size={14} />
+                            Ver lista ({properties.length})
+                        </button>
+                    )}
 
                     {/* Selected property popup over map */}
                     <AnimatePresence>
@@ -723,24 +746,22 @@ export default function SearchPage() {
             <div className="md:hidden relative w-full h-full">
                 {/* Map — always full size behind */}
                 <MapArea properties={properties} flyTo={flyTo} selectProperty={selectProperty}
-                    setInitialBoundsConfigured={setInitialBoundsConfigured} setHoverBounds={setHoverBounds}
+                    setInitialBoundsConfigured={setInitialBoundsConfigured} setHoverBounds={handleBoundsChange}
                     className="absolute inset-0 z-0" />
 
-                {/* "Search Here" button for Mobile */}
-                <AnimatePresence>
-                    {showSearchHereButton && (
-                        <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -20, opacity: 0 }}
-                            className="absolute top-[8rem] left-1/2 -translate-x-1/2 z-[400]">
-                            <button
-                                onClick={applySearchHere}
-                                className="bg-accent-orange hover:bg-orange-600 text-white shadow-xl shadow-orange-500/20 px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-2 transition-all active:scale-95 border border-orange-400"
-                            >
-                                <RefreshCw size={12} className={isFetching ? 'animate-spin' : ''} />
-                                Buscar aquí
-                            </button>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                {/* "Buscar aquí" — always visible on mobile */}
+                <div className="absolute top-[8rem] left-1/2 -translate-x-1/2 z-[400]">
+                    <button
+                        onClick={applySearchHere}
+                        className={`shadow-xl px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-2 transition-all active:scale-95 border ${isSearchPending
+                            ? 'bg-accent-orange text-white border-orange-400 shadow-orange-500/20'
+                            : 'bg-bg-dark/90 text-gray-300 border-glass-border hover:border-accent-orange hover:text-accent-orange'
+                            }`}
+                    >
+                        <RefreshCw size={12} className={isFetching ? 'animate-spin' : ''} />
+                        {isSearchPending ? 'Nueva búsqueda' : 'Buscar aquí'}
+                    </button>
+                </div>
 
                 {/* Floating search bar – compact on mobile */}
                 <div className="absolute top-2 left-2 right-2 z-[500]">
@@ -763,8 +784,8 @@ export default function SearchPage() {
                                             priceRange={priceRange} setPriceRange={setPriceRange} priceMode={priceMode} setPriceMode={setPriceMode}
                                             exactPrice={exactPrice} setExactPrice={setExactPrice}
                                             mascotas={mascotas} setMascotas={setMascotas} estacionamiento={estacionamiento} setEstacionamiento={setEstacionamiento} patio={patio} setPatio={setPatio} piscina={piscina} setPiscina={setPiscina}
-                                            tipoVivienda={tipoVivienda} setTipoVivienda={setTipoVivienda} terrenoMin={terrenoMin} setTerrenoMin={setTerrenoMin} terrenoMax={terrenoMax} setTerrenoMax={setTerrenoMax}
-                                            construccionMin={construccionMin} setConstruccionMin={setConstruccionMin} construccionMax={construccionMax} setConstruccionMax={setConstruccionMax}
+                                            tipoVivienda={tipoVivienda} setTipoVivienda={setTipoVivienda} terrenoMin={terrenoMin} setTerrenoMin={setTerrenoMin} terrenoMax={terrenoMax} setTerrenoMax={terrenoMax}
+                                            construccionMin={construccionMin} setConstruccionMin={setConstruccionMin} construccionMax={construccionMax} setConstruccionMax={construccionMax}
                                             clearFilters={clearFilters} hasActiveFilters={hasActiveFilters} />
                                     </div>
                                 </motion.div>
@@ -781,7 +802,7 @@ export default function SearchPage() {
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.97 }}
                             className="absolute left-3 right-3 z-[600] rounded-2xl overflow-hidden shadow-2xl"
-                            style={{ bottom: 'calc(42% + 12px)', background: 'rgba(14,14,20,0.98)', border: '1px solid rgba(255,255,255,0.12)' }}
+                            style={{ bottom: showList ? 'calc(42% + 12px)' : '80px', background: 'rgba(14,14,20,0.98)', border: '1px solid rgba(255,255,255,0.12)' }}
                         >
                             {selected.images?.[0]?.url && (
                                 <img src={selected.images[0].url} alt={selected.ubicacion} className="w-full h-24 object-cover" />
@@ -821,43 +842,72 @@ export default function SearchPage() {
                     )}
                 </AnimatePresence>
 
-                {/* Bottom Sheet */}
-                <motion.div
-                    className="absolute left-0 right-0 bottom-0 z-[500] flex flex-col rounded-t-2xl overflow-hidden"
-                    animate={{ height: sheetState === 'expanded' ? '75%' : '34%' }}
-                    transition={{ type: 'spring', stiffness: 280, damping: 32 }}
-                    style={{ background: 'rgba(11,11,15,0.99)', borderTop: '1px solid rgba(255,255,255,0.09)', boxShadow: '0 -8px 40px rgba(0,0,0,0.7)' }}
-                >
-                    <div className="flex-shrink-0 px-4 pt-3 pb-2 cursor-pointer"
-                        onClick={() => setSheetState(s => s === 'expanded' ? 'peek' : 'expanded')}>
-                        <div className="w-10 h-1 bg-white/15 rounded-full mx-auto mb-3" />
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <MapPin size={12} className="text-accent-orange" />
-                                <span className="text-sm font-semibold">
-                                    {isLoading && !properties.length ? 'Buscando...' : `${properties.length} propiedades`}
-                                </span>
-                                {tipo && <span className={`text-[10px] px-2 py-0.5 rounded-full border capitalize ${tipoColor[tipo] || ''}`}>{tipo}</span>}
-                                {isFetching && <LoaderSpinner />}
+                {/* Bottom Sheet — only when showList is true */}
+                <AnimatePresence>
+                    {showList && (
+                        <motion.div
+                            initial={{ y: '100%', height: '52%' }}
+                            animate={{ y: 0, height: sheetState === 'expanded' ? '80%' : '52%' }}
+                            exit={{ y: '100%' }}
+                            className="absolute left-0 right-0 bottom-0 z-[500] flex flex-col rounded-t-2xl overflow-hidden"
+                            transition={{ type: 'spring', stiffness: 280, damping: 32 }}
+                            style={{ background: 'rgba(11,11,15,0.99)', borderTop: '1px solid rgba(255,255,255,0.09)', boxShadow: '0 -8px 40px rgba(0,0,0,0.7)' }}
+                        >
+                            <div className="flex-shrink-0 px-4 pt-3 pb-2 cursor-pointer"
+                                onClick={() => setSheetState(s => s === 'expanded' ? 'peek' : 'expanded')}>
+                                <div className="w-10 h-1 bg-white/15 rounded-full mx-auto mb-3" />
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <MapPin size={12} className="text-accent-orange" />
+                                        <span className="text-sm font-semibold">
+                                            {isLoading && !properties.length ? 'Buscando...' : `${properties.length} propiedades`}
+                                        </span>
+                                        {tipo && <span className={`text-[10px] px-2 py-0.5 rounded-full border capitalize ${tipoColor[tipo] || ''}`}>{tipo}</span>}
+                                        {isFetching && <LoaderSpinner />}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={(e) => { e.stopPropagation(); setShowList(false); }} className="text-gray-500 hover:text-white p-1">
+                                            <X size={14} />
+                                        </button>
+                                        {sheetState === 'expanded' ? <ChevronDown size={16} className="text-gray-500" /> : <ChevronUp size={16} className="text-gray-500" />}
+                                    </div>
+                                </div>
                             </div>
-                            {sheetState === 'expanded' ? <ChevronDown size={16} className="text-gray-500" /> : <ChevronUp size={16} className="text-gray-500" />}
-                        </div>
-                    </div>
-                    <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-2 relative">
-                        {isLoading && !properties.length ? (
-                            <div className="flex items-center justify-center h-16 text-gray-600 text-sm">Cargando zona actual...</div>
-                        ) : properties.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-20 text-gray-600 text-sm gap-2">
-                                <Search size={20} className="opacity-30" /> Sin resultados
+                            <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-2 relative">
+                                {isLoading && !properties.length ? (
+                                    <div className="flex items-center justify-center h-16 text-gray-600 text-sm">Cargando...</div>
+                                ) : properties.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center h-20 text-gray-600 text-sm gap-2">
+                                        <Search size={20} className="opacity-30" /> Sin resultados
+                                    </div>
+                                ) : (
+                                    properties.map((p: any) => (
+                                        <PropertyCard key={p.id} p={p} selected={selected?.id === p.id}
+                                            onClick={() => { setSelected(p); setSheetState('peek'); }} layout="sheet" />
+                                    ))
+                                )}
                             </div>
-                        ) : (
-                            properties.map((p: any) => (
-                                <PropertyCard key={p.id} p={p} selected={selected?.id === p.id}
-                                    onClick={() => { setSelected(p); setSheetState('peek'); }} layout="sheet" />
-                            ))
-                        )}
-                    </div>
-                </motion.div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* Floating "Ver lista" button — when sheet is hidden */}
+                <AnimatePresence>
+                    {!showList && (
+                        <motion.button
+                            initial={{ y: 20, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            exit={{ y: 20, opacity: 0 }}
+                            onClick={() => { setShowList(true); setSheetState('peek'); }}
+                            className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[500] bg-bg-dark/95 border border-glass-border text-sm font-semibold text-white px-5 py-3 rounded-full shadow-2xl flex items-center gap-2 hover:border-accent-orange transition-all active:scale-95"
+                            style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}
+                        >
+                            <MapPin size={14} className="text-accent-orange" />
+                            Ver {properties.length > 0 ? `${properties.length} propiedades` : 'lista'}
+                            <ChevronUp size={14} />
+                        </motion.button>
+                    )}
+                </AnimatePresence>
             </div>
         </div>
     );
