@@ -46,9 +46,9 @@ export class AuthService {
       },
     });
 
-    // Create wallet for new agent
+    // Create wallet for new agent with 365bs default balance
     await this.prisma.wallet.create({
-      data: { agentId: agent.id, balance: 0 },
+      data: { agentId: agent.id, balance: 365 },
     });
 
     if (dto.agencyId && dto.role !== 'agencia') {
@@ -67,10 +67,20 @@ export class AuthService {
       }
     }
 
-    // Send verification email
-    await this.sendVerificationEmail(agent.email, agent.name, code);
+    // Comentado para DEMO:
+    // await this.sendVerificationEmail(agent.email, agent.name, code);
 
-    return { message: 'Registro exitoso. Por favor revisa tu correo electrónico para activar tu cuenta.' };
+    // Para esta Demo rápida en render, auto-iniciamos su sesión devolviendo el token de una vez
+    // (Igual que en el código anterior) pero marcando su cuenta internamente como funcional.
+
+    // Opcional: Auto-verificar el correo en la DB directamente
+    await this.prisma.agent.update({
+      where: { id: agent.id },
+      data: { emailVerified: true }
+    });
+
+    const token = this.signToken(agent.id, agent.email, agent.role);
+    return { agent: this.sanitize(agent), token, message: 'Registro exitoso. (Modo Demo Activo)' };
   }
 
   async resendVerification(email: string) {
@@ -155,9 +165,10 @@ export class AuthService {
     const valid = await bcrypt.compare(dto.password, agent.password);
     if (!valid) throw new UnauthorizedException('Credenciales inválidas.');
 
-    if (!agent.emailVerified) {
-      throw new UnauthorizedException('Tu cuenta aún no está verificada. Por favor, revisa tu correo para activarla.');
-    }
+    // [MODO DEMO]: Desactivamos la obligación de validar correo
+    // if (!agent.emailVerified) {
+    //    throw new UnauthorizedException('Tu cuenta aún no está verificada. Por favor, revisa tu correo para activarla.');
+    // }
 
     const token = this.signToken(agent.id, agent.email, agent.role);
     return { agent: this.sanitize(agent), token };

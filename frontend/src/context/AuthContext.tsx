@@ -65,6 +65,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const register = async (data: any) => {
         const r = await api.post('/auth/register', data);
+        if (r.data.token && r.data.agent) {
+            localStorage.setItem('reky_token', r.data.token);
+            setToken(r.data.token);
+            setAgent(r.data.agent);
+        }
         return r.data;
     };
 
