@@ -18,7 +18,7 @@ export class AgentsService {
         points: true,
         createdAt: true,
         agency: { select: { id: true, name: true } },
-        _count: { select: { properties: true } },
+        _count: { select: { properties: { where: { enCoventa: false } } } },
       },
       orderBy: { points: 'desc' },
     });
@@ -45,7 +45,7 @@ export class AgentsService {
         properties: {
           include: { property: true },
         },
-        _count: { select: { properties: true, transactions: true } },
+        _count: { select: { properties: { where: { enCoventa: false } }, transactions: true } },
       },
     });
   }
@@ -59,7 +59,7 @@ export class AgentsService {
         points: true,
         role: true,
         agency: { select: { name: true } },
-        _count: { select: { properties: true, transactions: true } },
+        _count: { select: { properties: { where: { enCoventa: false } }, transactions: true } },
       },
       orderBy: { points: 'desc' },
       take: 50,

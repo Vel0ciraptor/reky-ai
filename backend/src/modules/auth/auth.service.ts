@@ -180,7 +180,7 @@ export class AuthService {
       include: {
         wallet: true,
         agency: true,
-        _count: { select: { properties: true, transactions: true } },
+        _count: { select: { properties: { where: { enCoventa: false } }, transactions: true } },
       },
     });
     if (!agent) throw new UnauthorizedException();

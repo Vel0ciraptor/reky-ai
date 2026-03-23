@@ -3,7 +3,7 @@ import { PrismaService } from '../../infra/database/prisma.service';
 
 @Injectable()
 export class AdminService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async getDashboardMetrics() {
     const now = new Date();
@@ -301,7 +301,7 @@ export class AdminService {
         points: true,
         verified: true,
         agency: { select: { name: true } },
-        _count: { select: { properties: true, transactions: true } },
+        _count: { select: { properties: { where: { enCoventa: false } }, transactions: true } },
       },
       orderBy: { points: 'desc' },
       take: 20,

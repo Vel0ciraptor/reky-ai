@@ -8,7 +8,7 @@ import { PrismaService } from '../../infra/database/prisma.service';
 
 @Injectable()
 export class AgenciesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   /**
    * List all agencies (for registration dropdown)
@@ -75,7 +75,7 @@ export class AgenciesService {
         avatarUrl: true,
         createdAt: true,
         wallet: { select: { balance: true } },
-        _count: { select: { properties: true, transactions: true } },
+        _count: { select: { properties: { where: { enCoventa: false } }, transactions: true } },
       },
       orderBy: { points: 'desc' },
     });
@@ -93,7 +93,7 @@ export class AgenciesService {
             phone: true,
             avatarUrl: true,
             points: true,
-            _count: { select: { properties: true, transactions: true } },
+            _count: { select: { properties: { where: { enCoventa: false } }, transactions: true } },
           },
         },
       },
@@ -336,7 +336,7 @@ export class AgenciesService {
         email: true,
         avatarUrl: true,
         points: true,
-        _count: { select: { properties: true } },
+        _count: { select: { properties: { where: { enCoventa: false } } } },
       },
       take: 10,
     });
