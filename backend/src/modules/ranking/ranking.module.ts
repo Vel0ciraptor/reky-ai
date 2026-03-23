@@ -7,4 +7,4 @@ import { RankingController } from './ranking.controller';
   providers: [RankingService],
   exports: [RankingService],
 })
-export class RankingModule { }
+export class RankingModule {}

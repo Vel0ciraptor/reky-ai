@@ -3,10 +3,10 @@ import { RankingService } from './ranking.service';
 
 @Controller('ranking')
 export class RankingController {
-    constructor(private readonly rankingService: RankingService) { }
+  constructor(private readonly rankingService: RankingService) {}
 
-    @Get()
-    getLeaderboard() {
-        return this.rankingService.getLeaderboard();
-    }
+  @Get()
+  getLeaderboard() {
+    return this.rankingService.getLeaderboard();
+  }
 }

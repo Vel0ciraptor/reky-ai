@@ -178,7 +178,7 @@ function ReqCard({ req, isOwn, onDelete, onChat, currentUserId }: {
 // Full Requirement Form
 // ─────────────────────────────────────────────
 function CreateRequirementForm({ onSuccess, onCancel }: { onSuccess: () => void; onCancel: () => void }) {
-    const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
+    const { register, handleSubmit, watch, formState: { errors } } = useForm({
         defaultValues: {
             propertyType: '' as PropertyType | '',
             tipoVivienda: '',
@@ -448,7 +448,7 @@ export default function RequirementsBoard() {
         } catch { alert('Error al eliminar'); }
     };
 
-    const handleChat = (agentId: string) => navigate(`/chat?target=${agentId}`);
+    const handleChat = (agentId: string) => navigate(`/chat?agent=${agentId}`);
 
     return (
         <div className="flex flex-col gap-6 w-full">

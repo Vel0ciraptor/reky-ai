@@ -5,8 +5,8 @@ import { ChatController } from './chat.controller';
 import { WalletModule } from '../wallet/wallet.module';
 
 @Module({
-    imports: [WalletModule],
-    controllers: [ChatController],
-    providers: [ChatGateway, ChatService],
+  imports: [WalletModule],
+  controllers: [ChatController],
+  providers: [ChatGateway, ChatService],
 })
-export class ChatModule { }
+export class ChatModule {}

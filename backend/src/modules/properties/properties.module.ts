@@ -9,4 +9,4 @@ import { WalletModule } from '../wallet/wallet.module';
   providers: [PropertiesService],
   exports: [PropertiesService],
 })
-export class PropertiesModule { }
+export class PropertiesModule {}

@@ -25,7 +25,7 @@ interface AuthContextType {
     agent: Agent | null;
     token: string | null;
     login: (email: string, password: string) => Promise<void>;
-    register: (data: any) => Promise<void>;
+    register: (data: any) => Promise<any>;
     logout: () => void;
     refreshAgent: () => Promise<void>;
     loading: boolean;
@@ -65,9 +65,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const register = async (data: any) => {
         const r = await api.post('/auth/register', data);
-        localStorage.setItem('reky_token', r.data.token);
-        setToken(r.data.token);
-        setAgent(r.data.agent);
+        return r.data;
     };
 
     const logout = () => {

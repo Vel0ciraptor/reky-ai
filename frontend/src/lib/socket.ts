@@ -4,7 +4,8 @@ let socket: Socket | null = null;
 
 export const getSocket = (): Socket => {
     if (!socket) {
-        socket = io('https://reky-ai.onrender.com/chat', {
+        const SOCKET_URL = import.meta.env.DEV ? 'http://localhost:3001/chat' : 'https://reky-ai.onrender.com/chat';
+        socket = io(SOCKET_URL, {
             transports: ['websocket'],
             autoConnect: false,
         });

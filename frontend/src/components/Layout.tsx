@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Search, Plus, MessageSquare, Trophy, User } from 'lucide-react';
+import { Search, Plus, MessageSquare, ClipboardList, User } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
@@ -11,7 +11,7 @@ const navItems = [
     { name: 'Buscar', icon: Search, path: '/search' },
     { name: 'Chat', icon: MessageSquare, path: '/chat' },
     { name: 'Publicar', icon: Plus, path: '/publish' },
-    { name: 'Ranking', icon: Trophy, path: '/ranking' },
+    { name: 'Pedidos', icon: ClipboardList, path: '/requirements' },
     { name: 'Perfil', icon: User, path: '/profile' },
 ];
 

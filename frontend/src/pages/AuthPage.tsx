@@ -59,8 +59,9 @@ const AuthPage = () => {
             if (agentType === 'de_agencia' && data.agencyId) {
                 payload.agencyId = data.agencyId;
             }
-            await registerFn(payload);
-            navigate('/search');
+            const response = await registerFn(payload);
+            setMode('login');
+            alert(response?.message || '¡Registro exitoso! Revisa tu correo electrónico para activar tu cuenta.');
         } catch (e: any) {
             setError(e.response?.data?.message || 'Error al registrarse');
         }

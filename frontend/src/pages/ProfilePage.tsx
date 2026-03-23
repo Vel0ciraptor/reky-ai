@@ -727,10 +727,11 @@ const ProfilePage = () => {
                         {[
                             { key: 'report' as const, icon: FileText, color: 'text-blue-400', hoverBg: 'group-hover:bg-blue-500', title: 'Reportar Venta', sub: 'Subir contrato' },
                             { key: 'wallet' as const, icon: Wallet, color: 'text-accent-orange', hoverBg: 'group-hover:bg-accent-orange', title: 'Recargar', sub: 'QR o Tarjeta' },
+                            { key: 'ranking' as const, icon: Trophy, color: 'text-yellow-400', hoverBg: 'group-hover:bg-yellow-500', title: 'Ranking', sub: 'Tabla de líderes', path: '/ranking' },
                             { key: 'properties' as const, icon: Home, color: 'text-purple-400', hoverBg: 'group-hover:bg-purple-500', title: 'Mis Propiedades', sub: 'Administrar' },
                             { key: 'settings' as const, icon: Settings, color: 'text-gray-400', hoverBg: 'group-hover:bg-gray-400', title: 'Configuración', sub: 'Perfil y cuenta' },
                         ].map((b, i) => (
-                            <motion.button key={b.key} onClick={() => setActiveModal(b.key)}
+                            <motion.button key={b.key} onClick={() => b.path ? navigate(b.path) : setActiveModal(b.key as any)}
                                 initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 + (i * 0.05) }}
                                 className="relative p-4 sm:p-5 rounded-3xl overflow-hidden group hover:-translate-y-1 transition-all duration-300 text-left border border-white/5"
                                 style={{ background: 'rgba(25,25,30,0.4)', backdropFilter: 'blur(10px)' }}>

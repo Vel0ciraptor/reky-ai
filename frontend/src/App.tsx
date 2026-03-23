@@ -8,7 +8,9 @@ import ChatPage from './pages/ChatPage';
 import RankingPage from './pages/RankingPage';
 import ProfilePage from './pages/ProfilePage';
 import PropertyDetailPage from './pages/PropertyDetailPage';
+import RequirementsBoard from './components/RequirementsBoard';
 import { Loader2 } from 'lucide-react';
+import VerifyEmailPage from './pages/VerifyEmailPage';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { agent, loading } = useAuth();
@@ -27,6 +29,7 @@ function App() {
     <Routes>
       {/* Public routes */}
       <Route path="/auth" element={<AuthPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/" element={<Navigate to="/search" replace />} />
 
       {/* Protected — agent pages */}
@@ -41,6 +44,15 @@ function App() {
       } />
       <Route path="/ranking" element={
         <ProtectedRoute><Layout><RankingPage /></Layout></ProtectedRoute>
+      } />
+      <Route path="/requirements" element={
+        <ProtectedRoute>
+          <Layout>
+            <div className="max-w-4xl mx-auto py-8 px-4 pb-24">
+              <RequirementsBoard />
+            </div>
+          </Layout>
+        </ProtectedRoute>
       } />
       <Route path="/profile" element={
         <ProtectedRoute><Layout><ProfilePage /></Layout></ProtectedRoute>

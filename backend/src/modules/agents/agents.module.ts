@@ -7,4 +7,4 @@ import { AgentsController } from './agents.controller';
   providers: [AgentsService],
   exports: [AgentsService],
 })
-export class AgentsModule { }
+export class AgentsModule {}

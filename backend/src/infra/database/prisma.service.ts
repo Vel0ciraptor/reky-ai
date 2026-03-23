@@ -5,27 +5,30 @@ import { ConfigService } from '@nestjs/config';
 import * as pg from 'pg';
 
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
-    private pool: pg.Pool;
+export class PrismaService
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
+{
+  private pool: pg.Pool;
 
-    constructor(private config: ConfigService) {
-        const connectionString = config.get<string>('DATABASE_URL');
-        const pool = new pg.Pool({
-            connectionString,
-            ssl: { rejectUnauthorized: false }
-        });
-        const adapter = new PrismaPg(pool);
+  constructor(private config: ConfigService) {
+    const connectionString = config.get<string>('DATABASE_URL');
+    const pool = new pg.Pool({
+      connectionString,
+      ssl: { rejectUnauthorized: false },
+    });
+    const adapter = new PrismaPg(pool);
 
-        super({ adapter });
-        this.pool = pool;
-    }
+    super({ adapter });
+    this.pool = pool;
+  }
 
-    async onModuleInit() {
-        await this.$connect();
-    }
+  async onModuleInit() {
+    await this.$connect();
+  }
 
-    async onModuleDestroy() {
-        await this.$disconnect();
-        await this.pool.end();
-    }
+  async onModuleDestroy() {
+    await this.$disconnect();
+    await this.pool.end();
+  }
 }
