@@ -14,7 +14,7 @@ import { JwtAuthGuard } from '../auth/jwt.guard';
 @Controller('agents')
 @UseGuards(JwtAuthGuard)
 export class AgentsController {
-  constructor(private readonly agentsService: AgentsService) {}
+  constructor(private readonly agentsService: AgentsService) { }
 
   @Get()
   findAll() {
@@ -28,7 +28,7 @@ export class AgentsController {
 
   @Post('upload-avatar')
   uploadAvatar(@Request() req: any, @Body() body: { avatarUrl: string }) {
-    return this.agentsService.uploadAvatar(req.user.id, body.avatarUrl);
+    return this.agentsService.uploadAvatar(req.user.sub, body.avatarUrl);
   }
 
   @Post('upload-identity')
@@ -37,7 +37,7 @@ export class AgentsController {
     @Body() body: { frontUrl: string; backUrl: string },
   ) {
     return this.agentsService.uploadIdentity(
-      req.user.id,
+      req.user.sub,
       body.frontUrl,
       body.backUrl,
     );
@@ -45,17 +45,17 @@ export class AgentsController {
 
   @Post('send-verification-email')
   sendVerificationEmail(@Request() req: any) {
-    return this.agentsService.sendVerificationEmail(req.user.id);
+    return this.agentsService.sendVerificationEmail(req.user.sub);
   }
 
   @Post('verify-email')
   verifyEmailCode(@Request() req: any, @Body() body: { code: string }) {
-    return this.agentsService.verifyEmailCode(req.user.id, body.code);
+    return this.agentsService.verifyEmailCode(req.user.sub, body.code);
   }
 
   @Get('my-properties')
   myProperties(@Request() req: any) {
-    return this.agentsService.getMyProperties(req.user.id);
+    return this.agentsService.getMyProperties(req.user.sub);
   }
 
   @Patch('update-profile')
@@ -63,7 +63,7 @@ export class AgentsController {
     @Request() req: any,
     @Body() body: { name?: string; lastName?: string; phone?: string },
   ) {
-    return this.agentsService.updateProfile(req.user.id, body);
+    return this.agentsService.updateProfile(req.user.sub, body);
   }
 
   @Get(':id')
