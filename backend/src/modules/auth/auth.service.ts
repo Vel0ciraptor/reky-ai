@@ -70,7 +70,7 @@ export class AuthService {
 
     // Send verification email
     if (this.resend) {
-      const verifyLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email?token=${code}`;
+      const verifyLink = `${process.env.FRONTEND_URL || 'http://localhost:5173/#'}/verify-email?token=${code}`;
       try {
         await this.resend.emails.send({
           from: 'Reky AI <onboarding@resend.dev>',
