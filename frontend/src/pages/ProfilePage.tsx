@@ -55,7 +55,6 @@ const ProfilePage = () => {
     const avatarInputRef = useRef<HTMLInputElement>(null);
     const [avatarUrl, setAvatarUrl] = useState<string | null>(agent?.avatarUrl || null);
 
-    // Verification states
     const fileInputFrontRef = useRef<HTMLInputElement>(null);
     const fileInputBackRef = useRef<HTMLInputElement>(null);
     const [frontImg, setFrontImg] = useState<string | null>(agent?.identityFront || null);
@@ -63,6 +62,9 @@ const ProfilePage = () => {
     const [emailCodeSent, setEmailCodeSent] = useState(false);
     const [verificationCode, setVerificationCode] = useState('');
     const [isVerified, setIsVerified] = useState(agent?.emailVerified || false);
+
+    // Wallet
+    const [walletAmount, setWalletAmount] = useState('');
 
     // Properties from DB
     const [myProperties, setMyProperties] = useState<MyProperty[]>([]);
@@ -796,24 +798,26 @@ const ProfilePage = () => {
                                         </div>
                                         <div className="grid grid-cols-2 gap-2.5 mb-4">
                                             {['50', '100', '200', '500'].map(a => (
-                                                <button key={a} className="py-2.5 bg-white/5 border border-glass-border rounded-xl text-sm font-semibold hover:border-accent-orange hover:bg-accent-orange/5 transition-all">Bs. {a}</button>
+                                                <button key={a} onClick={() => setWalletAmount(a)} className={`py-2.5 border rounded-xl text-sm font-semibold transition-all ${walletAmount === a ? 'border-accent-orange bg-accent-orange/10 text-accent-orange' : 'bg-white/5 border-glass-border hover:border-accent-orange/50'}`}>Bs. {a}</button>
                                             ))}
                                         </div>
                                         <div>
                                             <label className="text-xs text-gray-400 mb-1.5 block">Monto personalizado</label>
                                             <div className="relative">
                                                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 text-sm">Bs.</span>
-                                                <input type="number" placeholder="0.00" className="w-full bg-white/5 border border-glass-border pl-10 pr-4 py-2.5 rounded-xl text-sm focus:outline-none focus:border-accent-orange" />
+                                                <input type="number" placeholder="0.00" value={walletAmount} onChange={e => setWalletAmount(e.target.value)} className="w-full bg-white/5 border border-glass-border pl-10 pr-4 py-2.5 rounded-xl text-sm focus:outline-none focus:border-accent-orange" />
                                             </div>
                                         </div>
                                         <div className="flex gap-3 mt-5">
-                                            <button className="flex-1 py-3 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold flex items-center justify-center gap-2 text-sm transition-colors border border-white/5">
-                                                <div className="w-4 h-4 bg-white rounded-sm" /> QR
-                                            </button>
-                                            <button className="flex-1 py-3 rounded-xl bg-accent-orange hover:bg-accent-orange-hover text-white font-semibold flex items-center justify-center gap-2 text-sm transition-colors shadow-lg shadow-accent-orange/20">
-                                                <CreditCard size={16} /> Tarjeta
+                                            <button onClick={() => {
+                                                const amt = parseFloat(walletAmount);
+                                                if (isNaN(amt) || amt <= 0) return alert('Ingresa un monto válido');
+                                                window.open(`https://wa.me/59175005013?text=${encodeURIComponent(`Hola, quiero hacer una recarga por QR con el monto de ${amt} Bs.`)}`, '_blank');
+                                            }} className="flex-1 py-3 rounded-xl bg-[#25D366]/20 hover:bg-[#25D366]/30 text-[#25D366] font-bold flex items-center justify-center gap-2 text-sm transition-colors border border-[#25D366]/30">
+                                                Pagar con QR (WhatsApp)
                                             </button>
                                         </div>
+                                        <p className="text-[10px] text-gray-500 text-center mt-3">Serás redirigido a WhatsApp para recibir el QR y enviar el comprobante.</p>
                                     </div>
                                 )}
 

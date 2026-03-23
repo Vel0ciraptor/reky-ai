@@ -3,7 +3,7 @@ import { PrismaService } from '../../infra/database/prisma.service';
 
 @Injectable()
 export class AgentsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async findAll() {
     return this.prisma.agent.findMany({
@@ -130,7 +130,7 @@ export class AgentsService {
 
   async getMyProperties(agentId: string) {
     const relations = await this.prisma.propertyAgent.findMany({
-      where: { agentId },
+      where: { agentId, enCoventa: false },
       include: {
         property: {
           include: {
