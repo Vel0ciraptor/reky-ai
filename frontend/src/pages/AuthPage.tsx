@@ -35,13 +35,33 @@ const AuthPage = () => {
         api.get('/agencies').then(r => setAgencies(r.data)).catch(() => { });
     }, []);
 
+    const [unverifiedEmail, setUnverifiedEmail] = useState('');
+    const [resending, setResending] = useState(false);
+
     const handleLogin = async (data: LoginForm) => {
         setError('');
+        setUnverifiedEmail('');
         try {
             await login(data.email, data.password);
             navigate('/search');
         } catch (e: any) {
-            setError(e.response?.data?.message || 'Error al iniciar sesión');
+            const msg = e.response?.data?.message || 'Error al iniciar sesión';
+            setError(msg);
+            if (msg.includes('verificada')) {
+                setUnverifiedEmail(data.email);
+            }
+        }
+    };
+
+    const handleResend = async () => {
+        setResending(true);
+        try {
+            const r = await api.post('/auth/resend-verification', { email: unverifiedEmail });
+            alert(r.data.message || 'Correo reenviado exitosamente');
+        } catch (e: any) {
+            alert(e.response?.data?.message || 'Error al reenviar correo');
+        } finally {
+            setResending(false);
         }
     };
 
@@ -104,7 +124,18 @@ const AuthPage = () => {
 
                 {error && (
                     <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm p-3 rounded-xl mb-4 text-center">
-                        {error}
+                        <p>{error}</p>
+                        {unverifiedEmail && (
+                            <button
+                                type="button"
+                                onClick={handleResend}
+                                disabled={resending}
+                                className="mt-2 text-accent-orange font-bold hover:underline text-xs flex items-center justify-center gap-1 w-full"
+                            >
+                                {resending ? <Loader2 size={12} className="animate-spin" /> : null}
+                                Reenviar correo de verificación
+                            </button>
+                        )}
                     </div>
                 )}
 

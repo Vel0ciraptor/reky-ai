@@ -51,7 +51,6 @@ export class AuthService {
       data: { agentId: agent.id, balance: 0 },
     });
 
-    // Pending agency request logic
     if (dto.agencyId && dto.role !== 'agencia') {
       const agency = await this.prisma.agency.findUnique({
         where: { id: dto.agencyId },
@@ -69,30 +68,65 @@ export class AuthService {
     }
 
     // Send verification email
-    if (this.resend) {
-      const verifyLink = `${process.env.FRONTEND_URL || 'http://localhost:5173/#'}/verify-email?token=${code}`;
-      try {
-        await this.resend.emails.send({
-          from: 'Reky AI <onboarding@resend.dev>',
-          to: agent.email,
-          subject: 'Activa tu cuenta en Reky AI',
-          html: `
-            <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; text-align: center; border-radius: 12px; border: 1px solid #eee; background-color: #FAFAFA;">
-                <h2 style="color: #FF5A1F;">¡Bienvenido a Reky AI!</h2>
-                <p style="color: #555; font-size: 16px;">Hola <strong>${agent.name}</strong>, gracias por registrarte. Para iniciar sesión y comenzar a usar la plataforma, por favor activa tu cuenta haciendo clic en el botón de abajo:</p>
-                <br/>
-                <a href="${verifyLink}" style="background-color: #FF5A1F; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Activar Mi Cuenta</a>
-                <br/><br/>
-                <p style="color: #999; font-size: 12px;">Si el botón no funciona, copia y pega este enlace en tu navegador:<br/>${verifyLink}</p>
-            </div>
-          `,
-        });
-      } catch (err) {
-        console.error('No se pudo enviar el correo:', err);
-      }
-    }
+    await this.sendVerificationEmail(agent.email, agent.name, code);
 
     return { message: 'Registro exitoso. Por favor revisa tu correo electrónico para activar tu cuenta.' };
+  }
+
+  async resendVerification(email: string) {
+    if (!email) throw new BadRequestException('El correo es obligatorio');
+
+    const agent = await this.prisma.agent.findUnique({ where: { email } });
+    if (!agent) throw new BadRequestException('El usuario no existe o el correo es incorrecto.');
+    if (agent.emailVerified) throw new BadRequestException('La cuenta ya está verificada.');
+
+    const code = agent.verificationCode || crypto.randomBytes(32).toString('hex');
+
+    // If it didn't have a code for some reason, generate and save a new one
+    if (!agent.verificationCode) {
+      await this.prisma.agent.update({
+        where: { id: agent.id },
+        data: { verificationCode: code },
+      });
+    }
+
+    await this.sendVerificationEmail(agent.email, agent.name, code);
+
+    return { message: 'Correo reenviado exitosamente. Por favor revisa tu correo.' };
+  }
+
+  private async sendVerificationEmail(email: string, name: string, code: string) {
+    if (!this.resend) {
+      console.warn('⚠️ RESEND_API_KEY no configurada. Saltando envío de correo.');
+      return;
+    }
+
+    const verifyLink = `${process.env.FRONTEND_URL || 'http://localhost:5173/#'}/verify-email?token=${code}`;
+    try {
+      const { data, error } = await this.resend.emails.send({
+        from: 'Reky AI <onboarding@resend.dev>',
+        to: email,
+        subject: 'Activa tu cuenta en Reky AI',
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; text-align: center; border-radius: 12px; border: 1px solid #eee; background-color: #FAFAFA;">
+              <h2 style="color: #FF5A1F;">¡Bienvenido a Reky AI!</h2>
+              <p style="color: #555; font-size: 16px;">Hola <strong>${name}</strong>, para iniciar sesión y usar la plataforma, por favor activa tu cuenta haciendo clic en el botón de abajo:</p>
+              <br/>
+              <a href="${verifyLink}" style="background-color: #FF5A1F; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Activar Mi Cuenta</a>
+              <br/><br/>
+              <p style="color: #999; font-size: 12px;">Si el botón no funciona, copia y pega este enlace en tu navegador:<br/>${verifyLink}</p>
+          </div>
+        `,
+      });
+
+      if (error) {
+        console.error('❌ Error de Resend:', error);
+      } else {
+        console.log(`✅ Correo enviado con éxito a ${email}. ID:`, data?.id);
+      }
+    } catch (err) {
+      console.error('No se pudo enviar el correo:', err);
+    }
   }
 
   async verifyEmail(token: string) {
