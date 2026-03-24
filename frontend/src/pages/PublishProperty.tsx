@@ -179,15 +179,30 @@ const PublishProperty = () => {
         setValue('ubicacion', address, { shouldValidate: true });
     }, [setValue]);
 
-    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
-        files.forEach(file => {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setImages(prev => [...prev, reader.result as string].slice(0, 5));
-            };
-            reader.readAsDataURL(file);
-        });
+        if (files.length === 0) return;
+
+        setIsUploadingImage(true);
+        for (const file of files) {
+            if (images.length >= 5) break;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await api.post('/upload/image', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                setImages(prev => [...prev, response.data.url].slice(0, 5));
+            } catch (error) {
+                console.error('Upload error:', error);
+                alert('Error al subir una de las imágenes');
+            }
+        }
+        setIsUploadingImage(false);
     };
 
     const removeImage = (index: number) => {
@@ -333,21 +348,28 @@ const PublishProperty = () => {
                             <button
                                 type="button"
                                 onClick={() => fileInputRef.current?.click()}
-                                className="aspect-square rounded-xl border-2 border-dashed border-glass-border flex flex-col items-center justify-center gap-1.5 text-gray-500 hover:border-accent-orange hover:text-accent-orange transition-all bg-white/3"
+                                disabled={isUploadingImage}
+                                className="aspect-square rounded-xl border-2 border-dashed border-glass-border hover:border-accent-orange/50 hover:bg-accent-orange/10 flex flex-col items-center justify-center gap-1.5 transition-all group disabled:opacity-50"
                             >
-                                <Camera size={20} />
-                                <span className="text-[10px] font-medium">Subir</span>
+                                {isUploadingImage ? (
+                                    <Loader2 size={18} className="text-accent-orange animate-spin" />
+                                ) : (
+                                    <>
+                                        <Camera size={18} className="text-gray-600 group-hover:text-accent-orange" />
+                                        <span className="text-[10px] text-gray-600 font-medium">Subir ({5 - images.length})</span>
+                                    </>
+                                )}
                             </button>
                         )}
+                        <input
+                            type="file"
+                            multiple
+                            accept="image/*"
+                            ref={fileInputRef}
+                            className="hidden"
+                            onChange={handleImageUpload}
+                        />
                     </div>
-                    <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleImageUpload}
-                        accept="image/*"
-                        multiple
-                        className="hidden"
-                    />
                 </div>
 
                 <div className="glass-card p-5 flex flex-col gap-4">

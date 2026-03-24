@@ -59,9 +59,7 @@ const ProfilePage = () => {
     const fileInputBackRef = useRef<HTMLInputElement>(null);
     const [frontImg, setFrontImg] = useState<string | null>(agent?.identityFront || null);
     const [backImg, setBackImg] = useState<string | null>(agent?.identityBack || null);
-    const [emailCodeSent, setEmailCodeSent] = useState(false);
-    const [verificationCode, setVerificationCode] = useState('');
-    const [isVerified, setIsVerified] = useState(agent?.emailVerified || false);
+
 
     // Wallet
     const [walletAmount, setWalletAmount] = useState('');
@@ -156,7 +154,6 @@ const ProfilePage = () => {
             setAvatarUrl(agent.avatarUrl || null);
             setFrontImg(agent.identityFront || null);
             setBackImg(agent.identityBack || null);
-            setIsVerified(agent.emailVerified || false);
             setProfileName(agent.name);
             setProfileLastName(agent.lastName);
             setProfilePhone(agent.phone);
@@ -204,11 +201,7 @@ const ProfilePage = () => {
         reader.readAsDataURL(file);
     };
 
-    const handleSendCode = async () => { try { await api.post('/agents/send-verification-email'); setEmailCodeSent(true); } catch (err) { console.error(err); } };
-    const handleVerifyCode = async () => {
-        try { await api.post('/agents/verify-email', { code: verificationCode }); setIsVerified(true); setEmailCodeSent(false); await refreshAgent(); }
-        catch (err) { console.error('Código inválido', err); }
-    };
+
 
     const handleSaveProfile = async () => {
         setSaving(true);
@@ -1004,28 +997,12 @@ const ProfilePage = () => {
                                                         ))}
                                                     </div>
                                                 </div>
-                                                <div className={`relative pl-6 transition-all duration-300 ${(!frontImg || !backImg) && !isVerified ? 'opacity-50 grayscale pointer-events-none' : ''}`}>
-                                                    <div className={`absolute -left-[17px] top-0 w-8 h-8 rounded-full border-2 flex items-center justify-center text-sm font-bold shadow-lg ${isVerified ? 'bg-green-500/20 border-green-500/40 text-green-400' : 'bg-accent-orange border-accent-orange-hover text-white'}`}>
-                                                        {isVerified ? <Check size={14} strokeWidth={3} /> : '3'}
+                                                <div className="relative pl-6 opacity-30 pointer-events-none">
+                                                    <div className="absolute -left-[17px] top-0 w-8 h-8 rounded-full bg-green-500/10 border-2 border-green-500/20 flex items-center justify-center text-green-400/50">
+                                                        <Check size={14} strokeWidth={3} />
                                                     </div>
-                                                    <h4 className="text-sm font-bold text-gray-200 leading-none mb-1 pt-1.5">3. Verificar Correo</h4>
-                                                    <p className="text-xs text-gray-400 mb-3">Verificaremos: <span className="text-gray-200 font-medium">{agent?.email}</span></p>
-                                                    {isVerified ? (
-                                                        <div className="bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3">
-                                                            <span className="text-green-400 text-xs font-semibold flex items-center gap-1"><Check size={12} /> Cuenta Verificada</span>
-                                                            <span className="text-[10px] text-gray-400 block mt-0.5">Ya puedes publicar propiedades.</span>
-                                                        </div>
-                                                    ) : emailCodeSent ? (
-                                                        <div className="flex gap-2 items-center">
-                                                            <input type="text" placeholder="000000" maxLength={6} value={verificationCode} onChange={e => setVerificationCode(e.target.value)}
-                                                                className="flex-1 bg-white/5 border border-accent-orange/50 px-3 py-2.5 rounded-xl text-sm focus:outline-none focus:border-accent-orange text-center tracking-[0.5em] font-mono text-white" />
-                                                            <button onClick={handleVerifyCode} className="bg-accent-orange hover:bg-accent-orange-hover text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition-colors shadow-lg shadow-accent-orange/20">Verificar</button>
-                                                        </div>
-                                                    ) : (
-                                                        <button onClick={handleSendCode} className="bg-white/10 hover:bg-white/15 border border-glass-border px-5 py-2.5 rounded-xl text-xs font-semibold text-white w-full transition-colors">
-                                                            Enviar código al correo
-                                                        </button>
-                                                    )}
+                                                    <h4 className="text-sm font-bold text-gray-400 leading-none mb-1 pt-1.5">3. Verificar Correo</h4>
+                                                    <p className="text-[10px] text-gray-500">Omitido para pruebas.</p>
                                                 </div>
                                             </div>
                                         )}

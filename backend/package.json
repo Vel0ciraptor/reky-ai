@@ -32,6 +32,7 @@
     "@nestjs/websockets": "^11.1.14",
     "@prisma/adapter-pg": "^7.4.1",
     "@prisma/client": "^7.4.1",
+    "@supabase/supabase-js": "^2.100.0",
     "@types/multer": "^2.1.0",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",

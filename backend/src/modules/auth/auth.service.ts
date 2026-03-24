@@ -41,8 +41,8 @@ export class AuthService {
         password: hashed,
         phone: dto.phone,
         role: dto.role ?? 'agente',
-        emailVerified: false,
-        verificationCode: code,
+        emailVerified: true, // Auto-verificar por defecto para pruebas
+        verificationCode: null,
       },
     });
 
@@ -67,20 +67,9 @@ export class AuthService {
       }
     }
 
-    // Comentado para DEMO:
-    // await this.sendVerificationEmail(agent.email, agent.name, code);
-
-    // Para esta Demo rápida en render, auto-iniciamos su sesión devolviendo el token de una vez
-    // (Igual que en el código anterior) pero marcando su cuenta internamente como funcional.
-
-    // Opcional: Auto-verificar el correo en la DB directamente
-    await this.prisma.agent.update({
-      where: { id: agent.id },
-      data: { emailVerified: true }
-    });
-
+    // Para esta Demo rápida, auto-iniciamos su sesión de una vez
     const token = this.signToken(agent.id, agent.email, agent.role);
-    return { agent: this.sanitize(agent), token, message: 'Registro exitoso. (Modo Demo Activo)' };
+    return { agent: this.sanitize(agent), token, message: 'Registro exitoso. (Verificación omitida)' };
   }
 
   async resendVerification(email: string) {
@@ -165,10 +154,12 @@ export class AuthService {
     const valid = await bcrypt.compare(dto.password, agent.password);
     if (!valid) throw new UnauthorizedException('Credenciales inválidas.');
 
-    // [MODO DEMO]: Desactivamos la obligación de validar correo
-    // if (!agent.emailVerified) {
-    //    throw new UnauthorizedException('Tu cuenta aún no está verificada. Por favor, revisa tu correo para activarla.');
-    // }
+    // Verificación de correo omitida para pruebas
+    /*
+    if (!agent.emailVerified) {
+       throw new UnauthorizedException('Tu cuenta aún no está verificada. Por favor, revisa tu correo para activarla.');
+    }
+    */
 
     const token = this.signToken(agent.id, agent.email, agent.role);
     return { agent: this.sanitize(agent), token };

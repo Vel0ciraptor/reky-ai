@@ -86,63 +86,23 @@ export class AgentsService {
   }
 
   async sendVerificationEmail(agentId: string) {
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-
-    const agent = await this.prisma.agent.update({
-      where: { id: agentId },
-      data: { verificationCode: code },
-      select: { email: true, name: true },
-    });
-
-    if (this.resend) {
-      try {
-        const { error } = await this.resend.emails.send({
-          from: 'Reky AI <onboarding@resend.dev>',
-          to: agent.email,
-          subject: 'Tu código de verificación - Reky AI',
-          html: `
-            <div style="font-family: sans-serif; max-width: 480px; margin: auto; padding: 24px;
-              border-radius: 12px; border: 1px solid #eee; background: #FAFAFA; text-align: center;">
-              <h2 style="color: #FF5A1F;">Reky AI — Verificación de Cuenta</h2>
-              <p style="color: #555; font-size: 15px;">
-                Hola <strong>${agent.name}</strong>, usa este código para verificar tu correo:
-              </p>
-              <div style="font-size: 36px; font-weight: bold; letter-spacing: 10px;
-                color: #FF5A1F; padding: 20px 0;">${code}</div>
-              <p style="color: #999; font-size: 12px;">
-                Válido por 15 minutos. Si no lo solicitaste, ignora este mensaje.
-              </p>
-            </div>
-          `,
-        });
-        if (error) console.error('❌ Resend error (agents):', error);
-      } catch (err) {
-        console.error('No se pudo enviar el correo de verificación:', err);
-      }
-    } else {
-      // Development fallback — print code so devs can test without Resend
-      console.log(`[DEV] Verification code for ${agent.email}: ${code}`);
-    }
-
-    return { message: 'Código enviado al correo' };
-  }
-
-  async verifyEmailCode(agentId: string, code: string) {
-    const agent = await this.prisma.agent.findUnique({
-      where: { id: agentId },
-      select: { verificationCode: true, emailVerified: true },
-    });
-
-    if (!agent) throw new Error('Agente no encontrado');
-    if (agent.emailVerified) return { success: true, message: 'El correo ya fue verificado' };
-    if (agent.verificationCode !== code) throw new Error('Código incorrecto');
-
+    // Deshabilitado para pruebas: marcamos como verificado directamente
     await this.prisma.agent.update({
       where: { id: agentId },
       data: { emailVerified: true, verificationCode: null },
     });
 
-    return { success: true, message: 'Correo verificado con éxito' };
+    return { message: 'Cuenta verificada automáticamente (Modo Pruebas)' };
+  }
+
+  async verifyEmailCode(agentId: string, code: string) {
+    // Siempre retornar éxito para pruebas
+    await this.prisma.agent.update({
+      where: { id: agentId },
+      data: { emailVerified: true, verificationCode: null },
+    });
+
+    return { success: true, message: 'Correo verificado con éxito (Modo Pruebas)' };
   }
 
   async getMyProperties(agentId: string) {

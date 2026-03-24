@@ -1,33 +1,60 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type sharp_t from 'sharp';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const sharp: typeof sharp_t = require('sharp');
-import * as fs from 'fs';
-import * as path from 'path';
 import { randomUUID } from 'crypto';
 
 @Injectable()
 export class UploadService {
-    private readonly uploadDir = path.join(process.cwd(), 'uploads', 'properties');
+    private supabase: SupabaseClient;
+    private readonly bucketName = 'properties';
 
-    constructor() {
-        // Ensure folder exists at startup
-        if (!fs.existsSync(this.uploadDir)) {
-            fs.mkdirSync(this.uploadDir, { recursive: true });
+    constructor(private configService: ConfigService) {
+        const url = this.configService.get<string>('SUPABASE_URL');
+        const key = this.configService.get<string>('SUPABASE_KEY');
+
+        if (!url || !key) {
+            console.warn('Supabase credentials not found. Image uploads might fail.');
         }
+
+        this.supabase = createClient(url || '', key || '');
     }
 
     async processAndSave(file: Express.Multer.File): Promise<string> {
         const filename = `${randomUUID()}.webp`;
-        const outputPath = path.join(this.uploadDir, filename);
 
-        // Convert JPG → WebP, resize to max 1200px wide, quality 75
-        await sharp(file.buffer)
-            .resize({ width: 1200, withoutEnlargement: true })
-            .webp({ quality: 75 })
-            .toFile(outputPath);
+        try {
+            // 1. Optimize image with Sharp (WebP, scale down, format)
+            const webpBuffer = await sharp(file.buffer)
+                .resize({ width: 1200, withoutEnlargement: true })
+                .webp({ quality: 80 })
+                .toBuffer();
 
-        // Return a public URL path (served as static files from /uploads/properties/)
-        return `/uploads/properties/${filename}`;
+            // 2. Upload to Supabase Storage
+            const { data, error } = await this.supabase.storage
+                .from(this.bucketName)
+                .upload(filename, webpBuffer, {
+                    contentType: 'image/webp',
+                    cacheControl: '3600',
+                    upsert: false
+                });
+
+            if (error) {
+                console.error('Supabase Upload Error:', error);
+                throw new InternalServerErrorException('Error al subir imagen a Supabase');
+            }
+
+            // 3. Return the Public URL
+            const { data: { publicUrl } } = this.supabase.storage
+                .from(this.bucketName)
+                .getPublicUrl(data.path);
+
+            return publicUrl;
+        } catch (error) {
+            console.error('Process Error:', error);
+            throw new InternalServerErrorException('Error procesando la imagen');
+        }
     }
 }
