@@ -4,6 +4,6 @@ node_modules
 
 /generated/prisma
 
-# Uploaded files – only keep the folder skeleton
-/uploads/properties/*.webp
-/uploads/properties/*.jpg
+# Uploaded files – ignore ALL files but keep folder skeleton via .gitkeep
+/uploads/properties/*
+!/uploads/properties/.gitkeep
