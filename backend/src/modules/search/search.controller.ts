@@ -3,7 +3,7 @@ import { SearchService } from './search.service';
 
 @Controller('search')
 export class SearchController {
-  constructor(private readonly searchService: SearchService) {}
+  constructor(private readonly searchService: SearchService) { }
 
   @Get()
   search(
@@ -26,27 +26,15 @@ export class SearchController {
     @Query('terrenoMax') terrenoMax?: number,
     @Query('construccionMin') construccionMin?: number,
     @Query('construccionMax') construccionMax?: number,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
   ) {
     return this.searchService.search({
-      tipo,
-      minPrecio,
-      maxPrecio,
-      dormitorios,
-      banos,
-      estacionamiento,
-      patio,
-      piscina,
-      q,
-      minLat,
-      maxLat,
-      minLng,
-      maxLng,
-      mascotas,
-      tipoVivienda,
-      terrenoMin,
-      terrenoMax,
-      construccionMin,
-      construccionMax,
+      tipo, minPrecio, maxPrecio, dormitorios, banos,
+      estacionamiento, patio, piscina, q,
+      minLat, maxLat, minLng, maxLng,
+      mascotas, tipoVivienda, terrenoMin, terrenoMax,
+      construccionMin, construccionMax, page, limit,
     });
   }
 }

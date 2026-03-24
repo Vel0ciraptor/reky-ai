@@ -527,7 +527,11 @@ export default function SearchPage() {
         // searchBounds only changes when user clicks "Buscar aquí" — no re-fetch on pan/zoom
         queryKey: ['properties', q, tipo, dormitorios, banos, priceRange, priceMode, exactPrice, mascotas, estacionamiento, patio, piscina, tipoVivienda, terrenoMin, terrenoMax, construccionMin, construccionMax, searchBounds?.toBBoxString()],
         queryFn: async () => {
-            try { const r = await api.get(`/search?${new URLSearchParams(buildParams())}`); return r.data; }
+            try {
+                const r = await api.get(`/search?${new URLSearchParams(buildParams())}`);
+                // Backend now returns { data, total, hasMore } — extract the array
+                return Array.isArray(r.data) ? r.data : (r.data?.data ?? []);
+            }
             catch { return []; }
         },
         staleTime: 5 * 60 * 1000, // Cache 5 minutes

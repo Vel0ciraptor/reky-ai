@@ -3,7 +3,7 @@ import { PrismaService } from '../../infra/database/prisma.service';
 
 @Injectable()
 export class SearchService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async search(filters: {
     tipo?: string;
@@ -25,6 +25,8 @@ export class SearchService {
     terrenoMax?: number;
     construccionMin?: number;
     construccionMax?: number;
+    page?: number;
+    limit?: number;
   }) {
     const where: any = {};
 
@@ -103,37 +105,50 @@ export class SearchService {
       ];
     }
 
-    const properties = await this.prisma.property.findMany({
-      where,
-      include: {
-        agents: {
-          include: {
-            agent: {
-              select: {
-                id: true,
-                name: true,
-                lastName: true,
-                phone: true,
-                points: true,
-                agency: { select: { name: true } },
+    const limit = Math.min(Number(filters.limit) || 100, 200);
+    const page = Math.max(Number(filters.page) || 1, 1);
+    const skip = (page - 1) * limit;
+
+    const [properties, total] = await Promise.all([
+      this.prisma.property.findMany({
+        where,
+        include: {
+          agents: {
+            include: {
+              agent: {
+                select: {
+                  id: true, name: true, lastName: true,
+                  phone: true, points: true,
+                  agency: { select: { name: true } },
+                },
               },
             },
+            orderBy: { promocionado: 'desc' },
           },
-          orderBy: { promocionado: 'desc' },
+          tags: { include: { tag: { select: { name: true } } } },
+          images: { orderBy: { orden: 'asc' }, take: 3 },
+          _count: { select: { agents: true } },
         },
-        tags: { include: { tag: { select: { name: true } } } },
-        images: { orderBy: { orden: 'asc' }, take: 3 },
-        _count: { select: { agents: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 200,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.property.count({ where }),
+    ]);
+
+    // Promoted properties float to top within the page
+    const sorted = properties.sort((a, b) => {
+      const aP = a.agents.some((ag) => ag.promocionado) ? 1 : 0;
+      const bP = b.agents.some((ag) => ag.promocionado) ? 1 : 0;
+      return bP - aP;
     });
 
-    // Sort promoted first (properties where any agent has promocionado=true)
-    return properties.sort((a, b) => {
-      const aPromoted = a.agents.some((ag) => ag.promocionado) ? 1 : 0;
-      const bPromoted = b.agents.some((ag) => ag.promocionado) ? 1 : 0;
-      return bPromoted - aPromoted;
-    });
+    return {
+      data: sorted,
+      total,
+      page,
+      limit,
+      hasMore: skip + limit < total,
+    };
   }
 }

@@ -1,21 +1,28 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../infra/database/prisma.service';
+import { Resend } from 'resend';
 
 @Injectable()
 export class AgentsService {
-  constructor(private prisma: PrismaService) { }
+  private resend: Resend | null = null;
+
+  constructor(private prisma: PrismaService) {
+    if (process.env.RESEND_API_KEY) {
+      this.resend = new Resend(process.env.RESEND_API_KEY);
+    }
+  }
 
   async findAll() {
     return this.prisma.agent.findMany({
+      where: { role: { not: 'admin' } },
       select: {
         id: true,
         name: true,
         lastName: true,
-        email: true,
-        phone: true,
         role: true,
         verified: true,
         points: true,
+        avatarUrl: true,
         createdAt: true,
         agency: { select: { id: true, name: true } },
         _count: { select: { properties: { where: { enCoventa: false } } } },
@@ -42,9 +49,7 @@ export class AgentsService {
         emailVerified: true,
         agency: true,
         wallet: true,
-        properties: {
-          include: { property: true },
-        },
+        properties: { include: { property: true } },
         _count: { select: { properties: { where: { enCoventa: false } }, transactions: true } },
       },
     });
@@ -76,26 +81,49 @@ export class AgentsService {
   async uploadIdentity(agentId: string, frontUrl: string, backUrl: string) {
     return this.prisma.agent.update({
       where: { id: agentId },
-      data: {
-        identityFront: frontUrl,
-        identityBack: backUrl,
-      },
+      data: { identityFront: frontUrl, identityBack: backUrl },
     });
   }
 
   async sendVerificationEmail(agentId: string) {
-    // Generate a 6 digit code
     const code = Math.floor(100000 + Math.random() * 900000).toString();
 
-    await this.prisma.agent.update({
+    const agent = await this.prisma.agent.update({
       where: { id: agentId },
       data: { verificationCode: code },
+      select: { email: true, name: true },
     });
 
-    // In a real app, send email here via SendGrid/Nodemailer
-    console.log(
-      `[EMAIL MOCK] Verification code for agent ${agentId} is: ${code}`,
-    );
+    if (this.resend) {
+      try {
+        const { error } = await this.resend.emails.send({
+          from: 'Reky AI <onboarding@resend.dev>',
+          to: agent.email,
+          subject: 'Tu código de verificación - Reky AI',
+          html: `
+            <div style="font-family: sans-serif; max-width: 480px; margin: auto; padding: 24px;
+              border-radius: 12px; border: 1px solid #eee; background: #FAFAFA; text-align: center;">
+              <h2 style="color: #FF5A1F;">Reky AI — Verificación de Cuenta</h2>
+              <p style="color: #555; font-size: 15px;">
+                Hola <strong>${agent.name}</strong>, usa este código para verificar tu correo:
+              </p>
+              <div style="font-size: 36px; font-weight: bold; letter-spacing: 10px;
+                color: #FF5A1F; padding: 20px 0;">${code}</div>
+              <p style="color: #999; font-size: 12px;">
+                Válido por 15 minutos. Si no lo solicitaste, ignora este mensaje.
+              </p>
+            </div>
+          `,
+        });
+        if (error) console.error('❌ Resend error (agents):', error);
+      } catch (err) {
+        console.error('No se pudo enviar el correo de verificación:', err);
+      }
+    } else {
+      // Development fallback — print code so devs can test without Resend
+      console.log(`[DEV] Verification code for ${agent.email}: ${code}`);
+    }
+
     return { message: 'Código enviado al correo' };
   }
 
@@ -105,24 +133,13 @@ export class AgentsService {
       select: { verificationCode: true, emailVerified: true },
     });
 
-    if (!agent) {
-      throw new Error('Agente no encontrado');
-    }
-
-    if (agent.emailVerified) {
-      return { success: true, message: 'El correo ya fue verificado' };
-    }
-
-    if (agent.verificationCode !== code) {
-      throw new Error('Código incorrecto');
-    }
+    if (!agent) throw new Error('Agente no encontrado');
+    if (agent.emailVerified) return { success: true, message: 'El correo ya fue verificado' };
+    if (agent.verificationCode !== code) throw new Error('Código incorrecto');
 
     await this.prisma.agent.update({
       where: { id: agentId },
-      data: {
-        emailVerified: true,
-        verificationCode: null, // Clear code after success
-      },
+      data: { emailVerified: true, verificationCode: null },
     });
 
     return { success: true, message: 'Correo verificado con éxito' };
@@ -133,9 +150,7 @@ export class AgentsService {
       where: { agentId, enCoventa: false },
       include: {
         property: {
-          include: {
-            images: { orderBy: { orden: 'asc' }, take: 1 },
-          },
+          include: { images: { orderBy: { orden: 'asc' }, take: 1 } },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -156,13 +171,7 @@ export class AgentsService {
     }));
   }
 
-  async updateProfile(
-    agentId: string,
-    data: { name?: string; lastName?: string; phone?: string },
-  ) {
-    return this.prisma.agent.update({
-      where: { id: agentId },
-      data,
-    });
+  async updateProfile(agentId: string, data: { name?: string; lastName?: string; phone?: string }) {
+    return this.prisma.agent.update({ where: { id: agentId }, data });
   }
 }

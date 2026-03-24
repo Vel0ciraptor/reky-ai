@@ -7,187 +7,93 @@ export class AdminService {
 
   async getDashboardMetrics() {
     const now = new Date();
-
-    // Date boundaries
     const startOfWeek = new Date(now);
     startOfWeek.setDate(now.getDate() - now.getDay());
     startOfWeek.setHours(0, 0, 0, 0);
-
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfYear = new Date(now.getFullYear(), 0, 1);
+    const twelveMonthsAgo = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+    const twentyEightDaysAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 27);
+    const twelveWeeksAgo = new Date(now);
+    twelveWeeksAgo.setDate(twelveWeeksAgo.getDate() - 84);
 
+    // All scalar counts + bulk data in ONE Promise.all — no N+1 loops
     const [
-      totalAgents,
-      totalProperties,
-      totalTransactions,
-      pendingVerifications,
-      totalAgencies,
-      salesWeek,
-      salesMonth,
-      salesYear,
-      propsWeek,
-      propsMonth,
-      propsYear,
-      agentsThisMonth,
-      recentTransactions,
+      totalAgents, totalProperties, totalTransactions, pendingVerifications,
+      totalAgencies, salesWeek, salesMonth, salesYear,
+      propsWeek, propsMonth, propsYear, agentsThisMonth,
+      ventaCount, alquilerCount, anticreticoCount,
+      allVerifiedTx, allProperties,
     ] = await Promise.all([
       this.prisma.agent.count({ where: { role: { not: 'admin' } } }),
       this.prisma.property.count(),
       this.prisma.transaction.count({ where: { verificado: true } }),
       this.prisma.transaction.count({ where: { verificado: false } }),
       this.prisma.agency.count(),
-      // Sales by period (verified)
-      this.prisma.transaction.count({
-        where: { verificado: true, fecha: { gte: startOfWeek } },
-      }),
-      this.prisma.transaction.count({
-        where: { verificado: true, fecha: { gte: startOfMonth } },
-      }),
-      this.prisma.transaction.count({
-        where: { verificado: true, fecha: { gte: startOfYear } },
-      }),
-      // Properties by period
-      this.prisma.property.count({
-        where: { createdAt: { gte: startOfWeek } },
-      }),
-      this.prisma.property.count({
-        where: { createdAt: { gte: startOfMonth } },
-      }),
-      this.prisma.property.count({
-        where: { createdAt: { gte: startOfYear } },
-      }),
-      // Agents joined this month
-      this.prisma.agent.count({
-        where: { createdAt: { gte: startOfMonth }, role: { not: 'admin' } },
-      }),
-      // Latest 12 months of verified transactions for chart
-      this.prisma.transaction.findMany({
-        where: {
-          verificado: true,
-          fecha: { gte: new Date(now.getFullYear() - 1, now.getMonth(), 1) },
-        },
-        select: { fecha: true, tipo: true },
-        orderBy: { fecha: 'asc' },
-      }),
-    ]);
-
-    // Build monthly chart data (last 12 months)
-    const monthlyChart: {
-      label: string;
-      ventas: number;
-      propiedades: number;
-    }[] = [];
-    for (let i = 11; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const nextMonth = new Date(d.getFullYear(), d.getMonth() + 1, 1);
-      const label = d.toLocaleDateString('es-BO', { month: 'short' });
-      const ventas = recentTransactions.filter(
-        (t) => t.fecha >= d && t.fecha < nextMonth,
-      ).length;
-      const propsInMonth = await this.prisma.property.count({
-        where: { createdAt: { gte: d, lt: nextMonth } },
-      });
-      monthlyChart.push({ label, ventas, propiedades: propsInMonth });
-    }
-
-    // Build daily chart data (last 28 days)
-    const allRecentTxs = await this.prisma.transaction.findMany({
-      where: {
-        verificado: true,
-        fecha: {
-          gte: new Date(now.getFullYear(), now.getMonth(), now.getDate() - 28),
-        },
-      },
-      select: { fecha: true },
-    });
-    const dailyChart: { label: string; ventas: number; propiedades: number }[] =
-      [];
-    for (let i = 27; i >= 0; i--) {
-      const dayStart = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate() - i,
-        0,
-        0,
-        0,
-      );
-      const dayEnd = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate() - i + 1,
-        0,
-        0,
-        0,
-      );
-      const label = dayStart.toLocaleDateString('es-BO', {
-        day: '2-digit',
-        month: 'short',
-      });
-      const ventas = allRecentTxs.filter(
-        (t) => t.fecha >= dayStart && t.fecha < dayEnd,
-      ).length;
-      const propsInDay = await this.prisma.property.count({
-        where: { createdAt: { gte: dayStart, lt: dayEnd } },
-      });
-      dailyChart.push({ label, ventas, propiedades: propsInDay });
-    }
-
-    // Build weekly chart data (last 12 weeks)
-    const twelveWeeksAgo = new Date(now);
-    twelveWeeksAgo.setDate(twelveWeeksAgo.getDate() - 84);
-    const allWeeklyTxs = await this.prisma.transaction.findMany({
-      where: { verificado: true, fecha: { gte: twelveWeeksAgo } },
-      select: { fecha: true },
-    });
-    const weeklyChart: {
-      label: string;
-      ventas: number;
-      propiedades: number;
-    }[] = [];
-    for (let i = 11; i >= 0; i--) {
-      const weekStart = new Date(now);
-      weekStart.setDate(weekStart.getDate() - (i * 7 + now.getDay()));
-      weekStart.setHours(0, 0, 0, 0);
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekEnd.getDate() + 7);
-      const label = `${weekStart.toLocaleDateString('es-BO', { day: '2-digit', month: 'short' })}`;
-      const ventas = allWeeklyTxs.filter(
-        (t) => t.fecha >= weekStart && t.fecha < weekEnd,
-      ).length;
-      const propsInWeek = await this.prisma.property.count({
-        where: { createdAt: { gte: weekStart, lt: weekEnd } },
-      });
-      weeklyChart.push({ label, ventas, propiedades: propsInWeek });
-    }
-
-    // Property type distribution
-    const [ventaCount, alquilerCount, anticreticoCount] = await Promise.all([
+      this.prisma.transaction.count({ where: { verificado: true, fecha: { gte: startOfWeek } } }),
+      this.prisma.transaction.count({ where: { verificado: true, fecha: { gte: startOfMonth } } }),
+      this.prisma.transaction.count({ where: { verificado: true, fecha: { gte: startOfYear } } }),
+      this.prisma.property.count({ where: { createdAt: { gte: startOfWeek } } }),
+      this.prisma.property.count({ where: { createdAt: { gte: startOfMonth } } }),
+      this.prisma.property.count({ where: { createdAt: { gte: startOfYear } } }),
+      this.prisma.agent.count({ where: { createdAt: { gte: startOfMonth }, role: { not: 'admin' } } }),
       this.prisma.property.count({ where: { tipo: 'venta' } }),
       this.prisma.property.count({ where: { tipo: 'alquiler' } }),
       this.prisma.property.count({ where: { tipo: 'anticretico' } }),
+      // Bulk fetch once — slice in JS for daily/weekly/monthly charts
+      this.prisma.transaction.findMany({
+        where: { verificado: true, fecha: { gte: twelveMonthsAgo } },
+        select: { fecha: true },
+      }),
+      this.prisma.property.findMany({
+        where: { createdAt: { gte: twelveMonthsAgo } },
+        select: { createdAt: true },
+      }),
     ]);
 
+    // Monthly chart (12 months) — pure JS, zero extra DB calls
+    const monthlyChart = Array.from({ length: 12 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (11 - i), 1);
+      const next = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+      return {
+        label: d.toLocaleDateString('es-BO', { month: 'short' }),
+        ventas: allVerifiedTx.filter((t) => t.fecha >= d && t.fecha < next).length,
+        propiedades: allProperties.filter((p) => p.createdAt >= d && p.createdAt < next).length,
+      };
+    });
+
+    // Daily chart (last 28 days)
+    const dailyChart = Array.from({ length: 28 }, (_, i) => {
+      const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (27 - i), 0, 0, 0);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setDate(dayEnd.getDate() + 1);
+      return {
+        label: dayStart.toLocaleDateString('es-BO', { day: '2-digit', month: 'short' }),
+        ventas: allVerifiedTx.filter((t) => t.fecha >= twentyEightDaysAgo && t.fecha >= dayStart && t.fecha < dayEnd).length,
+        propiedades: allProperties.filter((p) => p.createdAt >= twentyEightDaysAgo && p.createdAt >= dayStart && p.createdAt < dayEnd).length,
+      };
+    });
+
+    // Weekly chart (last 12 weeks)
+    const weeklyChart = Array.from({ length: 12 }, (_, i) => {
+      const weekStart = new Date(now);
+      weekStart.setDate(weekStart.getDate() - ((11 - i) * 7 + now.getDay()));
+      weekStart.setHours(0, 0, 0, 0);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 7);
+      return {
+        label: weekStart.toLocaleDateString('es-BO', { day: '2-digit', month: 'short' }),
+        ventas: allVerifiedTx.filter((t) => t.fecha >= twelveWeeksAgo && t.fecha >= weekStart && t.fecha < weekEnd).length,
+        propiedades: allProperties.filter((p) => p.createdAt >= twelveWeeksAgo && p.createdAt >= weekStart && p.createdAt < weekEnd).length,
+      };
+    });
+
     return {
-      totalAgents,
-      totalProperties,
-      totalTransactions,
-      pendingVerifications,
-      totalAgencies,
-      salesWeek,
-      salesMonth,
-      salesYear,
-      propsWeek,
-      propsMonth,
-      propsYear,
-      agentsThisMonth,
-      dailyChart,
-      weeklyChart,
-      monthlyChart,
-      propertyDistribution: {
-        venta: ventaCount,
-        alquiler: alquilerCount,
-        anticretico: anticreticoCount,
-      },
+      totalAgents, totalProperties, totalTransactions, pendingVerifications,
+      totalAgencies, salesWeek, salesMonth, salesYear,
+      propsWeek, propsMonth, propsYear, agentsThisMonth,
+      dailyChart, weeklyChart, monthlyChart,
+      propertyDistribution: { venta: ventaCount, alquiler: alquilerCount, anticretico: anticreticoCount },
     };
   }
 
