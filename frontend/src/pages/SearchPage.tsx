@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import MarkerClusterGroup from 'react-leaflet-cluster';
@@ -35,26 +35,17 @@ const createClusterCustomIcon = function (cluster: any) {
     });
 };
 
-const SCZ_CENTER: [number, number] = [-17.7863, -63.1812];
-
-const ZONES = [
-    { name: 'Plan 3000', coords: [-17.780, -63.160] as [number, number] },
-    { name: 'Equipetrol', coords: [-17.765, -63.198] as [number, number] },
-    { name: 'Centro', coords: [-17.784, -63.181] as [number, number] },
-    { name: 'Norte', coords: [-17.750, -63.181] as [number, number] },
-    { name: 'Urubó', coords: [-17.720, -63.230] as [number, number] },
-    { name: 'Sur', coords: [-17.820, -63.181] as [number, number] },
+const QUICK_FILTERS = [
+    { name: 'Venta', icon: '🏠', value: 'venta', field: 'tipo' },
+    { name: 'Alquiler', icon: '🔑', value: 'alquiler', field: 'tipo' },
+    { name: 'Anticrético', icon: '🏦', value: 'anticretico', field: 'tipo' },
+    { name: 'Condominio', icon: '🏘️', value: 'casa en condominio', field: 'tipoVivienda' },
+    { name: 'Pet Friendly', icon: '🐾', value: true, field: 'mascotas' },
+    { name: 'Con Piscina', icon: '🏊', value: true, field: 'piscina' },
+    { name: 'Con Parqueo', icon: '🚗', value: true, field: 'estacionamiento' },
 ];
 
-const FlyToZone = ({ coords }: { coords: [number, number] }) => {
-    const map = useMap();
-    useEffect(() => {
-        if (coords && map) {
-            try { map.flyTo(coords, 14, { duration: 1.2 }); } catch { /* ignore */ }
-        }
-    }, [coords[0], coords[1]]);
-    return null;
-};
+const SCZ_CENTER: [number, number] = [-17.7863, -63.1812];
 
 const MapController = ({ onBoundsReady }: { onBoundsReady: (b: L.LatLngBounds) => void }) => {
     const map = useMapEvents({
@@ -345,7 +336,9 @@ type SheetState = 'peek' | 'expanded';
 
 // ── Search Bar Component ────────────────────────────────────────
 const SearchBar = ({
-    inputValue, setInputValue, handleSearch, handleKeyDown, setQ, showFilters, setShowFilters, hasActiveFilters, fileInputRef, handleImageSearch, setFlyTo, className = ''
+    inputValue, setInputValue, handleSearch, handleKeyDown, setQ, showFilters, setShowFilters, hasActiveFilters, fileInputRef, handleImageSearch,
+    tipo, setTipo, tipoVivienda, setTipoVivienda, mascotas, setMascotas, piscina, setPiscina, estacionamiento, setEstacionamiento,
+    className = ''
 }: any) => (
     <div className={`flex flex-col gap-2 ${className}`}>
         <div className="flex gap-2">
@@ -355,7 +348,7 @@ const SearchBar = ({
                     value={inputValue}
                     onChange={e => setInputValue(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Zona, matrícula, etiqueta..."
+                    placeholder="Buscar por zona, barrio, etiquetas..."
                     className="w-full text-sm pl-9 pr-12 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-orange/50 transition-all font-medium"
                     style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)' }} />
 
@@ -391,29 +384,45 @@ const SearchBar = ({
                 {hasActiveFilters && <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-accent-orange rounded-full" />}
             </button>
         </div>
-        {/* Zone pills */}
-        <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
-            {ZONES.map(z => (
-                <button key={z.name} onClick={() => setFlyTo(z.coords)}
-                    className="flex-shrink-0 text-xs px-3 py-1.5 rounded-full border border-glass-border text-gray-400 hover:border-accent-orange/50 hover:text-accent-orange whitespace-nowrap transition-all"
-                    style={{ background: 'rgba(20,20,26,0.8)' }}>
-                    {z.name}
-                </button>
-            ))}
+        {/* Quick Filters pills */}
+        <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide no-scrollbar">
+            {QUICK_FILTERS.map(f => {
+                const isActive = (f.field === 'tipo' && tipo === f.value) ||
+                    (f.field === 'tipoVivienda' && tipoVivienda === f.value) ||
+                    (f.field === 'mascotas' && mascotas === f.value) ||
+                    (f.field === 'piscina' && piscina === f.value) ||
+                    (f.field === 'estacionamiento' && estacionamiento === f.value);
+
+                return (
+                    <button
+                        key={f.name}
+                        onClick={() => {
+                            if (f.field === 'tipo') setTipo(tipo === f.value ? '' : f.value as any);
+                            if (f.field === 'tipoVivienda') setTipoVivienda(tipoVivienda === f.value ? '' : f.value as any);
+                            if (f.field === 'mascotas') setMascotas(!mascotas);
+                            if (f.field === 'piscina') setPiscina(!piscina);
+                            if (f.field === 'estacionamiento') setEstacionamiento(!estacionamiento);
+                        }}
+                        className={`flex-shrink-0 text-[11px] px-3 py-1.5 rounded-full border transition-all flex items-center gap-1.5 ${isActive ? 'border-accent-orange bg-accent-orange/10 text-accent-orange' : 'border-glass-border text-gray-400 hover:border-gray-500 bg-white/5'}`}
+                    >
+                        <span>{f.icon}</span>
+                        <span className="font-medium whitespace-nowrap">{f.name}</span>
+                    </button>
+                );
+            })}
         </div>
     </div>
 );
 
 // ── Map Area Component ──────────────────────────────────────────
 const MapArea = ({
-    properties, flyTo, selectProperty, onBoundsReady, className = ''
-}: { properties: any[]; flyTo: any; selectProperty: (p: any) => void; onBoundsReady: (b: L.LatLngBounds) => void; className?: string }) => (
+    properties, selectProperty, onBoundsReady, className = ''
+}: { properties: any[]; selectProperty: (p: any) => void; onBoundsReady: (b: L.LatLngBounds) => void; className?: string }) => (
     <div className={`w-full h-full relative ${className}`}>
         <MapContainer center={SCZ_CENTER as L.LatLngExpression} zoom={12}
             style={{ height: '100%', width: '100%', minHeight: '200px' }} zoomControl={true}
             attributionControl={false}>
             <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
-            {flyTo && <FlyToZone coords={flyTo} />}
             <MapController onBoundsReady={onBoundsReady} />
 
             <MarkerClusterGroup
@@ -461,7 +470,6 @@ export default function SearchPage() {
     const [construccionMin, setConstruccionMin] = useState('');
     const [construccionMax, setConstruccionMax] = useState('');
 
-    const [flyTo, setFlyTo] = useState<[number, number] | null>(null);
     const [selected, setSelected] = useState<any>(null);
     const [sheetState, setSheetState] = useState<SheetState>('peek');
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -596,7 +604,10 @@ export default function SearchPage() {
                                     handleSearch={handleSearch} handleKeyDown={handleKeyDown}
                                     q={q} setQ={setQ} showFilters={showFilters} setShowFilters={setShowFilters}
                                     hasActiveFilters={hasActiveFilters} fileInputRef={fileInputRef}
-                                    handleImageSearch={handleImageSearch} setFlyTo={setFlyTo}
+                                    handleImageSearch={handleImageSearch}
+                                    tipo={tipo} setTipo={setTipo} tipoVivienda={tipoVivienda} setTipoVivienda={setTipoVivienda}
+                                    mascotas={mascotas} setMascotas={setMascotas} piscina={piscina} setPiscina={setPiscina}
+                                    estacionamiento={estacionamiento} setSetEstacionamiento={setEstacionamiento}
                                 />
                                 <AnimatePresence>
                                     {showFilters && (
@@ -649,7 +660,7 @@ export default function SearchPage() {
 
                 {/* Right map area */}
                 <div className="flex-1 relative h-full">
-                    <MapArea properties={displayProperties} flyTo={flyTo} selectProperty={selectProperty}
+                    <MapArea properties={displayProperties} selectProperty={selectProperty}
                         onBoundsReady={handleBoundsReady}
                         className="absolute inset-0 z-0" />
 
@@ -691,13 +702,13 @@ export default function SearchPage() {
                                 <div className="p-4">
                                     <div className="flex items-start justify-between gap-2">
                                         <div className="flex-1">
-                                            <div className="flex items-center gap-1.5 mb-1">
-                                                <span className={`text-xs px-2 py-0.5 rounded-full border capitalize ${tipoColor[selected.tipo] || ''}`}>{selected.tipo}</span>
-                                                <span className="text-xs text-gray-600">#{selected.matricula?.slice(-6)}</span>
+                                            <div className="flex items-center gap-1.5 mb-1.5">
+                                                <span className={`text-[10px] px-2 py-0.5 rounded-full border border-current capitalize ${tipoColor[selected.tipo] || ''}`}>{selected.tipo}</span>
+                                                <span className="text-[10px] px-2 py-0.5 rounded-full border border-glass-border text-gray-400 capitalize">{selected.tipoVivienda || 'Vivienda'}</span>
                                             </div>
-                                            <p className="font-bold leading-tight">{selected.ubicacion}</p>
-                                            <p className="text-gray-500 text-xs mt-0.5 line-clamp-2">{selected.descripcion}</p>
-                                            <div className="flex items-center justify-between mt-3">
+                                            <p className="font-bold leading-tight text-white">{selected.ubicacion}</p>
+                                            <p className="text-gray-500 text-xs mt-1 line-clamp-2">{selected.descripcion}</p>
+                                            <div className="flex items-center justify-between mt-3 bg-white/5 p-2 rounded-xl border border-glass-border">
                                                 <span className="text-xl font-bold text-accent-orange">${Number(selected.precio).toLocaleString()}</span>
                                                 <div className="flex gap-2 text-xs text-gray-500">
                                                     {selected.dormitorios > 0 && <span className="flex items-center gap-1"><Bed size={11} />{selected.dormitorios}</span>}
@@ -733,7 +744,7 @@ export default function SearchPage() {
             ══════════════════════════════════════════════════ */}
             <div className="md:hidden relative w-full h-full">
                 {/* Map — always full size behind */}
-                <MapArea properties={displayProperties} flyTo={flyTo} selectProperty={selectProperty}
+                <MapArea properties={displayProperties} selectProperty={selectProperty}
                     onBoundsReady={handleBoundsReady}
                     className="absolute inset-0 z-0" />
 
@@ -757,7 +768,10 @@ export default function SearchPage() {
                                 handleSearch={handleSearch} handleKeyDown={handleKeyDown}
                                 q={q} setQ={setQ} showFilters={showFilters} setShowFilters={setShowFilters}
                                 hasActiveFilters={hasActiveFilters} fileInputRef={fileInputRef}
-                                handleImageSearch={handleImageSearch} setFlyTo={setFlyTo}
+                                handleImageSearch={handleImageSearch}
+                                tipo={tipo} setTipo={setTipo} tipoVivienda={tipoVivienda} setTipoVivienda={setTipoVivienda}
+                                mascotas={mascotas} setMascotas={setMascotas} piscina={piscina} setPiscina={setPiscina}
+                                estacionamiento={estacionamiento} setEstacionamiento={setEstacionamiento}
                             />
                         </div>
                         <AnimatePresence>
