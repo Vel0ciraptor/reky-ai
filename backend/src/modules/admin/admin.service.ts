@@ -113,7 +113,6 @@ export class AdminService {
         property: {
           select: {
             id: true,
-            matricula: true,
             ubicacion: true,
             tipo: true,
             precio: true,
@@ -261,7 +260,6 @@ export class AdminService {
       'TIPO OPERACION',
       'ESTADO',
       'PRECIO (USD)',
-      'MATRICULA',
       'UBICACION/PROPIEDAD',
       'AGENTE',
       'AGENCIA',
@@ -276,7 +274,6 @@ export class AdminService {
       const type = tx.tipo.toUpperCase();
       const status = tx.verificado ? 'Verificado' : 'Pendiente';
       const price = Number(tx.property?.precio ?? 0).toFixed(2);
-      const matricula = tx.property?.matricula ?? 'S/N';
       // Escaping quotes for CSV safely
       const location = `"${(tx.property?.ubicacion ?? 'Sin Ubicación').replace(/"/g, '""')}"`;
       const agentName = `"${tx.agent?.name} ${tx.agent?.lastName}"`;
@@ -287,7 +284,6 @@ export class AdminService {
         type,
         status,
         price,
-        matricula,
         location,
         agentName,
         agencyName,

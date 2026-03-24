@@ -480,7 +480,6 @@ export class AgenciesService {
 
     return relations.map((r) => ({
       id: r.property.id,
-      matricula: r.property.matricula,
       descripcion: r.property.descripcion,
       ubicacion: r.property.ubicacion,
       tipo: r.property.tipo,

@@ -87,7 +87,6 @@ model AgencyRequest {
 
 model Property {
   id                 String          @id @default(uuid())
-  matricula          String          @unique
   descripcion        String
   ubicacion          String
   tipo               PropertyType

@@ -89,12 +89,11 @@ export class SearchService {
         where.construccion.lte = Number(filters.construccionMax);
     }
 
-    // Full text search: descripcion, ubicacion, matricula, tags
+    // Full text search: descripcion, ubicacion, tags
     if (filters.q) {
       where.OR = [
         { descripcion: { contains: filters.q, mode: 'insensitive' } },
         { ubicacion: { contains: filters.q, mode: 'insensitive' } },
-        { matricula: { contains: filters.q, mode: 'insensitive' } },
         {
           tags: {
             some: {

@@ -10,9 +10,6 @@ import { PropertyType } from '@prisma/client';
 
 export class CreatePropertyDto {
   @IsString()
-  matricula: string;
-
-  @IsString()
   @MaxLength(1000)
   descripcion: string;
 

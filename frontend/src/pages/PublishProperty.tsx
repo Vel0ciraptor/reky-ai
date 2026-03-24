@@ -6,7 +6,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useAuth } from '../context/AuthContext';
 import {
-    Plus, MapPin, DollarSign, Key, Bed, Bath, Car,
+    Plus, MapPin, DollarSign, Bed, Bath, Car,
     Wind, Waves, Clock, FileText, Loader2, CheckCircle2,
     Tag, X, Navigation, Image as ImageIcon, Camera, Trash2, Wallet, ChevronRight
 } from 'lucide-react';
@@ -57,7 +57,6 @@ const MapClickHandler = ({ onLocation }: { onLocation: (lat: number, lng: number
 type PropertyType = 'venta' | 'alquiler' | 'anticretico';
 
 interface PublishForm {
-    matricula: string;
     descripcion: string;
     ubicacion: string;
     tipo: PropertyType;
@@ -351,19 +350,7 @@ const PublishProperty = () => {
                     />
                 </div>
 
-                {/* ── MATRÍCULA + DESCRIPCIÓN ── */}
                 <div className="glass-card p-5 flex flex-col gap-4">
-                    <div>
-                        <label className="text-xs uppercase tracking-widest text-gray-500 flex items-center gap-1.5 mb-2">
-                            <Key size={13} /> Matrícula del Inmueble <span className="text-accent-orange">*</span>
-                        </label>
-                        <input
-                            {...register('matricula', { required: 'La matrícula es obligatoria' })}
-                            className={`w-full bg-white/5 border ${errors.matricula ? 'border-red-500' : 'border-glass-border'} px-4 py-3 rounded-xl focus:outline-none focus:border-accent-orange transition-all text-sm font-medium`}
-                            placeholder="Ej: 7080190000"
-                        />
-                        {errors.matricula && <p className="text-red-400 text-xs mt-1">{errors.matricula.message}</p>}
-                    </div>
                     <div>
                         <label className="text-xs uppercase tracking-widest text-gray-500 flex items-center gap-1.5 mb-2">
                             <FileText size={13} /> Descripción <span className="text-accent-orange">*</span>
@@ -518,10 +505,54 @@ const PublishProperty = () => {
                             <label className="text-xs text-gray-600 mb-1.5 flex items-center gap-1">🏠 Tipo de Vivienda</label>
                             <select {...register('tipoVivienda')} className="w-full bg-white/5 border border-glass-border px-3 py-2.5 rounded-xl focus:outline-none focus:border-accent-orange text-sm text-white/80">
                                 <option value="Cualquiera" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Cualquiera</option>
+
+                                {/* CASAS */}
                                 <option value="Casa en condominio" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Casa en condominio</option>
                                 <option value="Casa de campo" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Casa de campo</option>
                                 <option value="Casa en ciudad" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Casa en ciudad</option>
                                 <option value="Casa a las afueras" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Casa a las afueras</option>
+                                <option value="Casa de lujo" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Casa de lujo</option>
+                                <option value="Casa minimalista" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Casa minimalista</option>
+                                <option value="Casa colonial" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Casa colonial</option>
+                                <option value="Casa prefabricada" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Casa prefabricada</option>
+                                <option value="Casa ecológica" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Casa ecológica</option>
+
+                                {/* DEPARTAMENTOS */}
+                                <option value="Departamento" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Departamento</option>
+                                <option value="Departamento amoblado" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Departamento amoblado</option>
+                                <option value="Departamento tipo estudio" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Departamento tipo estudio</option>
+                                <option value="Penthouse" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Penthouse</option>
+                                <option value="Loft" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Loft</option>
+                                <option value="Dúplex" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Dúplex</option>
+
+                                {/* TERRENOS */}
+                                <option value="Terreno urbano" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Terreno urbano</option>
+                                <option value="Terreno rural" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Terreno rural</option>
+                                <option value="Terreno agrícola" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Terreno agrícola</option>
+                                <option value="Lote en condominio" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Lote en condominio</option>
+                                <option value="Lote comercial" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Lote comercial</option>
+
+                                {/* COMERCIAL */}
+                                <option value="Local comercial" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Local comercial</option>
+                                <option value="Oficina" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Oficina</option>
+                                <option value="Edificio" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Edificio</option>
+                                <option value="Galpón" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Galpón</option>
+                                <option value="Depósito" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Depósito</option>
+                                <option value="Centro comercial" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Centro comercial</option>
+
+                                {/* TURÍSTICOS */}
+                                <option value="Cabaña" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Cabaña</option>
+                                <option value="Quinta" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Quinta</option>
+                                <option value="Hacienda" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Hacienda</option>
+                                <option value="Hostal" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Hostal</option>
+                                <option value="Hotel" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Hotel</option>
+                                <option value="Resort" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Resort</option>
+
+                                {/* OTROS */}
+                                <option value="Garaje" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Garaje</option>
+                                <option value="Parqueo" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Parqueo</option>
+                                <option value="Proyecto en construcción" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Proyecto en construcción</option>
+                                <option value="Propiedad industrial" style={{ backgroundColor: '#0e0e14', color: '#ccc' }}>Propiedad industrial</option>
                             </select>
                         </div>
                         <div>
