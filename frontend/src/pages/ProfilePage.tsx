@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Home, CheckCircle, Wallet, Trophy, TrendingUp, FileText, Settings, LogOut, X, Upload, CreditCard, Save, Check, Camera, BarChart3, Clock, DollarSign, Edit3, Loader2, Users, UserPlus, Building2, Trash2 } from 'lucide-react';
+import { Star, Home, CheckCircle, Wallet, Trophy, TrendingUp, FileText, Settings, LogOut, X, Upload, CreditCard, Save, Check, Camera, BarChart3, Clock, DollarSign, Edit3, Loader2, Users, UserPlus, Building2, Trash2, Sun, Moon } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
@@ -81,6 +81,21 @@ const ProfilePage = () => {
     const [profileName, setProfileName] = useState(agent?.name || '');
     const [profileLastName, setProfileLastName] = useState(agent?.lastName || '');
     const [profilePhone, setProfilePhone] = useState(agent?.phone || '');
+
+    // Theme toggle
+    const [isLightMode, setIsLightMode] = useState(() => document.documentElement.classList.contains('light'));
+
+    const toggleTheme = () => {
+        if (isLightMode) {
+            document.documentElement.classList.remove('light');
+            localStorage.setItem('theme', 'dark');
+            setIsLightMode(false);
+        } else {
+            document.documentElement.classList.add('light');
+            localStorage.setItem('theme', 'light');
+            setIsLightMode(true);
+        }
+    };
 
     // Refresh agent data on mount
     useEffect(() => {
@@ -937,8 +952,24 @@ const ProfilePage = () => {
                                                 <div><label className="text-xs text-gray-400 mb-1.5 block">Nombre</label><input type="text" value={profileName} onChange={e => setProfileName(e.target.value)} className="w-full bg-white/5 border border-glass-border px-4 py-2.5 rounded-xl text-sm focus:outline-none focus:border-accent-orange" /></div>
                                                 <div><label className="text-xs text-gray-400 mb-1.5 block">Apellido</label><input type="text" value={profileLastName} onChange={e => setProfileLastName(e.target.value)} className="w-full bg-white/5 border border-glass-border px-4 py-2.5 rounded-xl text-sm focus:outline-none focus:border-accent-orange" /></div>
                                                 <div><label className="text-xs text-gray-400 mb-1.5 block">Teléfono</label><input type="text" value={profilePhone} onChange={e => setProfilePhone(e.target.value)} className="w-full bg-white/5 border border-glass-border px-4 py-2.5 rounded-xl text-sm focus:outline-none focus:border-accent-orange" /></div>
+
+                                                {/* Theme Toggle Button */}
+                                                <div className="flex items-center justify-between p-4 bg-white/5 border border-glass-border rounded-xl mt-4">
+                                                    <div>
+                                                        <span className="text-sm font-bold block mb-0.5">Tema Visual</span>
+                                                        <span className="text-[10px] text-gray-500">{isLightMode ? 'Modo Claro activado' : 'Modo Oscuro activado'}</span>
+                                                    </div>
+                                                    <button onClick={toggleTheme} className="flex gap-1.5 items-center bg-black/20 border border-glass-border p-1 rounded-full relative w-16 transition-colors shadow-inner" style={{ background: isLightMode ? '#CBD5E1' : 'rgba(0,0,0,0.3)' }}>
+                                                        <div className={`absolute top-1/2 -translate-y-1/2 w-7 h-7 bg-accent-orange shadow-lg rounded-full flex items-center justify-center transition-all ${isLightMode ? 'left-[calc(100%-1.8rem)] bg-white text-yellow-500' : 'left-1 text-white'}`}>
+                                                            {isLightMode ? <Sun size={14} /> : <Moon size={14} />}
+                                                        </div>
+                                                        <div className="w-6 h-6 flex items-center justify-center pointer-events-none opacity-50"><Moon size={12} /></div>
+                                                        <div className="w-6 h-6 flex items-center justify-center pointer-events-none opacity-50 text-yellow-600"><Sun size={12} /></div>
+                                                    </button>
+                                                </div>
+
                                                 <button onClick={handleSaveProfile} disabled={saving}
-                                                    className="w-full py-3 rounded-xl bg-accent-orange hover:bg-accent-orange-hover text-white font-semibold flex items-center justify-center gap-2 text-sm transition-colors shadow-lg shadow-accent-orange/20 mt-2 disabled:opacity-50">
+                                                    className="w-full py-3 rounded-xl bg-accent-orange hover:bg-accent-orange-hover text-white font-semibold flex items-center justify-center gap-2 text-sm transition-colors shadow-lg shadow-accent-orange/20 mt-4 disabled:opacity-50">
                                                     {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Guardar Cambios
                                                 </button>
                                             </div>

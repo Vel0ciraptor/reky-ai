@@ -491,10 +491,10 @@ export default function SearchPage() {
 
     // Initialize bounds on first load
     useEffect(() => {
-        if (initialBoundsConfigured && !searchBounds && hoverBounds) {
-            setSearchBounds(hoverBounds);
+        if (initialBoundsConfigured && !hoverBounds) {
+            // Start without searchBounds so it fetches EVERYTHING initially.
         }
-    }, [initialBoundsConfigured, searchBounds, hoverBounds]);
+    }, [initialBoundsConfigured, hoverBounds]);
 
 
     const handleSearch = () => {
@@ -541,13 +541,14 @@ export default function SearchPage() {
     const { data: properties = [], isLoading, isFetching } = useQuery({
         queryKey: ['properties', q, tipo, dormitorios, banos, priceRange, priceMode, exactPrice, mascotas, estacionamiento, patio, piscina, tipoVivienda, terrenoMin, terrenoMax, construccionMin, construccionMax, searchBounds?.toBBoxString()],
         queryFn: async () => {
-            if (!searchBounds) return [];
             try { const r = await api.get(`/search?${new URLSearchParams(buildParams())}`); return r.data; }
             catch { return []; }
         },
         staleTime: 60000,
-        enabled: !!searchBounds, // Auto-fetch, markers always visible on map
+        enabled: true, // Always allowed to fetch (first load has no bounds -> fetches all)
     });
+
+    const displayProperties = isSearchPending ? [] : properties;
 
     const handleImageSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -595,7 +596,7 @@ export default function SearchPage() {
                             {/* Sidebar header */}
                             <div className="flex-shrink-0 p-4 border-b border-glass-border">
                                 <div className="flex items-center justify-between mb-3">
-                                    <span className="text-sm font-semibold">Propiedades ({properties.length})</span>
+                                    <span className="text-sm font-semibold">Propiedades ({displayProperties.length})</span>
                                     <button onClick={() => setShowList(false)} className="text-gray-500 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors">
                                         <X size={14} />
                                     </button>
@@ -626,7 +627,7 @@ export default function SearchPage() {
                                     <div className="flex items-center gap-2">
                                         <MapPin size={12} className="text-accent-orange" />
                                         <span className="text-xs text-gray-500">
-                                            {isLoading ? 'Buscando...' : `${properties.length} propiedades`}
+                                            {isLoading ? 'Buscando...' : `${displayProperties.length} propiedades`}
                                         </span>
                                         {tipo && <span className={`text-[10px] px-2 py-0.5 rounded-full border capitalize ${tipoColor[tipo] || ''}`}>{tipo}</span>}
                                     </div>
@@ -636,16 +637,16 @@ export default function SearchPage() {
 
                             {/* Sidebar property list */}
                             <div className="flex-1 overflow-y-auto p-3">
-                                {isLoading && !properties.length ? (
+                                {isLoading && !displayProperties.length ? (
                                     <div className="flex items-center justify-center h-32 text-gray-600 text-sm">Cargando zona actual...</div>
-                                ) : properties.length === 0 ? (
+                                ) : displayProperties.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center h-32 text-gray-600 text-sm gap-2">
                                         <Search size={22} className="opacity-30" />
-                                        Sin resultados en esta zona
+                                        {isSearchPending ? 'Ubicaciones ocultas. Presiona Buscar.' : 'Sin resultados en esta zona'}
                                     </div>
                                 ) : (
                                     <div className="flex flex-col gap-2.5">
-                                        {properties.map((p: any) => (
+                                        {displayProperties.map((p: any) => (
                                             <PropertyCard key={p.id} p={p} selected={selected?.id === p.id}
                                                 onClick={() => selectProperty(p)} layout="sidebar" />
                                         ))}
@@ -658,7 +659,7 @@ export default function SearchPage() {
 
                 {/* Right map area */}
                 <div className="flex-1 relative h-full">
-                    <MapArea properties={properties} flyTo={flyTo} selectProperty={selectProperty}
+                    <MapArea properties={displayProperties} flyTo={flyTo} selectProperty={selectProperty}
                         setInitialBoundsConfigured={setInitialBoundsConfigured} setHoverBounds={handleBoundsChange}
                         className="absolute inset-0 z-0" />
 
@@ -683,7 +684,7 @@ export default function SearchPage() {
                             className="absolute top-4 left-4 z-[500] bg-bg-dark/90 border border-glass-border text-gray-300 hover:text-white hover:border-accent-orange px-4 py-2.5 rounded-full text-sm font-semibold flex items-center gap-2 transition-all shadow-xl"
                         >
                             <ChevronUp size={14} />
-                            Ver lista ({properties.length})
+                            Ver lista ({displayProperties.length})
                         </button>
                     )}
 
@@ -745,7 +746,7 @@ export default function SearchPage() {
             ══════════════════════════════════════════════════ */}
             <div className="md:hidden relative w-full h-full">
                 {/* Map — always full size behind */}
-                <MapArea properties={properties} flyTo={flyTo} selectProperty={selectProperty}
+                <MapArea properties={displayProperties} flyTo={flyTo} selectProperty={selectProperty}
                     setInitialBoundsConfigured={setInitialBoundsConfigured} setHoverBounds={handleBoundsChange}
                     className="absolute inset-0 z-0" />
 

@@ -3,3 +3,7 @@ node_modules
 .env
 
 /generated/prisma
+
+# Uploaded files – only keep the folder skeleton
+/uploads/properties/*.webp
+/uploads/properties/*.jpg
