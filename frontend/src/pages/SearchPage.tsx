@@ -56,20 +56,18 @@ const FlyToZone = ({ coords }: { coords: [number, number] }) => {
     return null;
 };
 
-const MapController = ({ onBoundsChange, initialBoundsInit }: { onBoundsChange: (b: L.LatLngBounds) => void, initialBoundsInit: () => void }) => {
+const MapController = ({ onBoundsReady }: { onBoundsReady: (b: L.LatLngBounds) => void }) => {
     const map = useMapEvents({
         moveend: (e) => {
-            onBoundsChange(e.target.getBounds());
+            // Track current view bounds without triggering a search
+            (window as any).__mapCurrentBounds = e.target.getBounds();
         },
-        click: () => {
-            // optional: close popups
-        }
     });
 
     useEffect(() => {
         if (map) {
-            onBoundsChange(map.getBounds());
-            initialBoundsInit();
+            (window as any).__mapCurrentBounds = map.getBounds();
+            onBoundsReady(map.getBounds());
         }
     }, [map]);
 
@@ -408,15 +406,15 @@ const SearchBar = ({
 
 // ── Map Area Component ──────────────────────────────────────────
 const MapArea = ({
-    properties, flyTo, selectProperty, setInitialBoundsConfigured, setHoverBounds, className = ''
-}: { properties: any[]; flyTo: any; selectProperty: (p: any) => void; setInitialBoundsConfigured: any; setHoverBounds: any; className?: string }) => (
+    properties, flyTo, selectProperty, onBoundsReady, className = ''
+}: { properties: any[]; flyTo: any; selectProperty: (p: any) => void; onBoundsReady: (b: L.LatLngBounds) => void; className?: string }) => (
     <div className={`w-full h-full relative ${className}`}>
         <MapContainer center={SCZ_CENTER as L.LatLngExpression} zoom={12}
             style={{ height: '100%', width: '100%', minHeight: '200px' }} zoomControl={true}
             attributionControl={false}>
             <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
             {flyTo && <FlyToZone coords={flyTo} />}
-            <MapController onBoundsChange={(b) => setHoverBounds(b)} initialBoundsInit={() => setInitialBoundsConfigured(true)} />
+            <MapController onBoundsReady={onBoundsReady} />
 
             <MarkerClusterGroup
                 chunkedLoading
@@ -468,33 +466,20 @@ export default function SearchPage() {
     const [sheetState, setSheetState] = useState<SheetState>('peek');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Map bounds logic
-    const [initialBoundsConfigured, setInitialBoundsConfigured] = useState(false);
+    // Map bounds — only used when user clicks "Buscar aquí"
     const [searchBounds, setSearchBounds] = useState<L.LatLngBounds | null>(null);
-    const [hoverBounds, setHoverBounds] = useState<L.LatLngBounds | null>(null);
-    // Controls whether the property list panel is visible
     const [showList, setShowList] = useState(false);
-    const [isSearchPending, setIsSearchPending] = useState(false);
 
+    // Called once map is ready — fires initial fetch without bounds
+    const handleBoundsReady = useCallback((b: L.LatLngBounds) => {
+        (window as any).__mapCurrentBounds = b;
+    }, []);
+
+    // Only called when user explicitly presses "Buscar aquí"
     const applySearchHere = () => {
-        if (hoverBounds) {
-            setSearchBounds(hoverBounds);
-            setIsSearchPending(false);
-        }
+        const currentBounds = (window as any).__mapCurrentBounds as L.LatLngBounds | undefined;
+        if (currentBounds) setSearchBounds(currentBounds);
     };
-
-    // When map moves, mark pending
-    const handleBoundsChange = (b: L.LatLngBounds) => {
-        setHoverBounds(b);
-        setIsSearchPending(true);
-    };
-
-    // Initialize bounds on first load
-    useEffect(() => {
-        if (initialBoundsConfigured && !hoverBounds) {
-            // Start without searchBounds so it fetches EVERYTHING initially.
-        }
-    }, [initialBoundsConfigured, hoverBounds]);
 
 
     const handleSearch = () => {
@@ -539,16 +524,18 @@ export default function SearchPage() {
     }, [q, tipo, dormitorios, priceRange, priceMode, exactPrice, searchBounds]);
 
     const { data: properties = [], isLoading, isFetching } = useQuery({
+        // searchBounds only changes when user clicks "Buscar aquí" — no re-fetch on pan/zoom
         queryKey: ['properties', q, tipo, dormitorios, banos, priceRange, priceMode, exactPrice, mascotas, estacionamiento, patio, piscina, tipoVivienda, terrenoMin, terrenoMax, construccionMin, construccionMax, searchBounds?.toBBoxString()],
         queryFn: async () => {
             try { const r = await api.get(`/search?${new URLSearchParams(buildParams())}`); return r.data; }
             catch { return []; }
         },
-        staleTime: 60000,
-        enabled: true, // Always allowed to fetch (first load has no bounds -> fetches all)
+        staleTime: 5 * 60 * 1000, // Cache 5 minutes
+        enabled: true,
     });
 
-    const displayProperties = isSearchPending ? [] : properties;
+    // Always show all markers — no hiding on pan/zoom
+    const displayProperties = properties;
 
     const handleImageSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -566,11 +553,10 @@ export default function SearchPage() {
         setMascotas(false); setEstacionamiento(false); setPatio(false); setPiscina(false); setTipoVivienda(''); setTerrenoMin(''); setTerrenoMax(''); setConstruccionMin(''); setConstruccionMax('');
     };
 
+    // Click on marker — just show panel, DO NOT move/zoom the map
     const selectProperty = (p: any) => {
         setSelected(p);
-        if (p?.lat && p?.lng) {
-            setFlyTo([p.lat as number, p.lng as number]);
-        }
+        // flyTo intentionally removed: map stays put when selecting a property
     };
 
     /* ════════════════════════════════════════════════
@@ -642,7 +628,7 @@ export default function SearchPage() {
                                 ) : displayProperties.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center h-32 text-gray-600 text-sm gap-2">
                                         <Search size={22} className="opacity-30" />
-                                        {isSearchPending ? 'Ubicaciones ocultas. Presiona Buscar.' : 'Sin resultados en esta zona'}
+                                        Sin resultados en esta zona
                                     </div>
                                 ) : (
                                     <div className="flex flex-col gap-2.5">
@@ -660,20 +646,17 @@ export default function SearchPage() {
                 {/* Right map area */}
                 <div className="flex-1 relative h-full">
                     <MapArea properties={displayProperties} flyTo={flyTo} selectProperty={selectProperty}
-                        setInitialBoundsConfigured={setInitialBoundsConfigured} setHoverBounds={handleBoundsChange}
+                        onBoundsReady={handleBoundsReady}
                         className="absolute inset-0 z-0" />
 
-                    {/* "Buscar aquí" — always visible */}
+                    {/* "Buscar aquí" — always visible, only fetches on demand */}
                     <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[500]">
                         <button
                             onClick={applySearchHere}
-                            className={`shadow-xl px-5 py-2.5 rounded-full text-sm font-semibold flex items-center gap-2 transition-all active:scale-95 border ${isSearchPending
-                                ? 'bg-accent-orange hover:bg-orange-600 text-white border-orange-400 shadow-orange-500/20'
-                                : 'bg-bg-dark/90 text-gray-300 border-glass-border hover:border-accent-orange hover:text-accent-orange'
-                                }`}
+                            className="shadow-xl px-5 py-2.5 rounded-full text-sm font-semibold flex items-center gap-2 transition-all active:scale-95 border bg-bg-dark/90 text-gray-300 border-glass-border hover:border-accent-orange hover:text-accent-orange"
                         >
                             <RefreshCw size={14} className={isFetching ? 'animate-spin' : ''} />
-                            {isSearchPending ? 'Buscar en esta zona' : 'Buscar aquí'}
+                            Buscar aquí
                         </button>
                     </div>
 
@@ -747,20 +730,17 @@ export default function SearchPage() {
             <div className="md:hidden relative w-full h-full">
                 {/* Map — always full size behind */}
                 <MapArea properties={displayProperties} flyTo={flyTo} selectProperty={selectProperty}
-                    setInitialBoundsConfigured={setInitialBoundsConfigured} setHoverBounds={handleBoundsChange}
+                    onBoundsReady={handleBoundsReady}
                     className="absolute inset-0 z-0" />
 
                 {/* "Buscar aquí" — always visible on mobile */}
                 <div className="absolute top-[8rem] left-1/2 -translate-x-1/2 z-[400]">
                     <button
                         onClick={applySearchHere}
-                        className={`shadow-xl px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-2 transition-all active:scale-95 border ${isSearchPending
-                            ? 'bg-accent-orange text-white border-orange-400 shadow-orange-500/20'
-                            : 'bg-bg-dark/90 text-gray-300 border-glass-border hover:border-accent-orange hover:text-accent-orange'
-                            }`}
+                        className="shadow-xl px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-2 transition-all active:scale-95 border bg-bg-dark/90 text-gray-300 border-glass-border hover:border-accent-orange hover:text-accent-orange"
                     >
                         <RefreshCw size={12} className={isFetching ? 'animate-spin' : ''} />
-                        {isSearchPending ? 'Nueva búsqueda' : 'Buscar aquí'}
+                        Buscar aquí
                     </button>
                 </div>
 
