@@ -1,35 +1,196 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg-dark: var(--theme-bg-dark, #0B0B0F);
-  --color-bg-card: var(--theme-bg-card, #14141A);
+  /* Core palette — always fixed */
   --color-accent-orange: #FF6A00;
   --color-accent-orange-hover: #FF8C2A;
   --color-accent-blue: #0F2A30;
-  --color-text-white: var(--theme-text-white, #F5F5F7);
-  --color-glass-border: var(--theme-glass-border, rgba(255, 255, 255, 0.08));
-  --color-glass-bg: var(--theme-glass-bg, rgba(255, 255, 255, 0.05));
-  
-  --color-white: var(--theme-white, #ffffff);
-  --color-black: var(--theme-black, #000000);
+
+  /* Semantic tokens — swap on light mode */
+  --color-bg-dark: var(--bg-surface, #0B0B0F);
+  --color-bg-card: var(--bg-card, #14141A);
+  --color-text-white: var(--text-primary, #F5F5F7);
+  --color-glass-border: var(--border-subtle, rgba(255, 255, 255, 0.08));
+  --color-glass-bg: var(--surface-glass, rgba(255, 255, 255, 0.05));
+
+  /* Expose secondary text token to Tailwind */
+  --color-text-secondary: var(--text-secondary, rgba(200, 200, 210, 0.75));
+  --color-text-muted: var(--text-muted, rgba(150, 150, 165, 0.65));
+  --color-surface: var(--surface-solid, rgba(255, 255, 255, 0.04));
+  --color-surface-hover: var(--surface-hover, rgba(255, 255, 255, 0.08));
 
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Playfair Display", ui-serif, Georgia, serif;
 }
 
+/* ── Dark (default) ──────────────────────────────────────────── */
 :root {
   color-scheme: dark;
+
+  --bg-surface: #0B0B0F;
+  --bg-card: #14141A;
+  --text-primary: #F5F5F7;
+  --text-secondary: rgba(200, 200, 210, 0.80);
+  --text-muted: rgba(155, 155, 170, 0.65);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --surface-glass: rgba(255, 255, 255, 0.04);
+  --surface-solid: rgba(255, 255, 255, 0.04);
+  --surface-hover: rgba(255, 255, 255, 0.08);
 }
 
+/* ── Light ───────────────────────────────────────────────────── */
 :root.light {
-  --theme-bg-dark: #f0f2f5;
-  --theme-bg-card: #ffffff;
-  --theme-text-white: #1e293b;
-  --theme-glass-border: rgba(0, 0, 0, 0.15);
-  --theme-glass-bg: rgba(255, 255, 255, 0.75);
-  --theme-white: #1e293b;
-  --theme-black: #ffffff;
   color-scheme: light;
+
+  --bg-surface: #F0F4F8;
+  --bg-card: #FFFFFF;
+  --text-primary: #0F172A;
+  /* slate-900 — very dark, readable */
+  --text-secondary: #374151;
+  /* gray-700  */
+  --text-muted: #6B7280;
+  /* gray-500  */
+  --border-subtle: rgba(15, 23, 42, 0.12);
+  --surface-glass: rgba(255, 255, 255, 0.85);
+  --surface-solid: rgba(15, 23, 42, 0.05);
+  --surface-hover: rgba(15, 23, 42, 0.08);
+}
+
+/* ── Global overrides for light mode ─────────────────────────── */
+/* These fix the hardcoded dark-only Tailwind utilities used
+   throughout the codebase without touching every component */
+:root.light {
+  /* gray-xxx in dark mode was grayish-white; swap to dark grays */
+  --tw-prose-body: var(--text-primary);
+
+  /* Any element using text-gray-300/400/500 should darken in light */
+  color: var(--text-primary);
+}
+
+:root.light *:not([class*="text-accent"]):not([class*="text-white"]):not([class*="text-orange"]):not([class*="text-emerald"]):not([class*="text-purple"]):not([class*="text-green"]):not([class*="text-red"]):not([class*="text-yellow"]):not([class*="text-blue"]):not(button):not(a) {
+  --tw-text-opacity: 1;
+}
+
+/* Fix the most common dark-only patterns directly */
+:root.light .text-gray-300 {
+  color: #374151 !important;
+}
+
+/* gray-700 */
+:root.light .text-gray-400 {
+  color: #4B5563 !important;
+}
+
+/* gray-600 */
+:root.light .text-gray-500 {
+  color: #6B7280 !important;
+}
+
+/* gray-500 */
+:root.light .text-gray-600 {
+  color: #374151 !important;
+}
+
+:root.light .text-gray-700 {
+  color: #1F2937 !important;
+}
+
+/* Fix translucent dark backgrounds */
+:root.light .bg-black\/40 {
+  background-color: rgba(255, 255, 255, 0.85) !important;
+}
+
+:root.light .bg-black\/50 {
+  background-color: rgba(255, 255, 255, 0.90) !important;
+}
+
+:root.light .bg-black\/60 {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+}
+
+:root.light .bg-black\/70 {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+}
+
+:root.light .bg-black\/80 {
+  background-color: rgba(255, 255, 255, 0.97) !important;
+}
+
+:root.light .bg-black\/40.backdrop-blur-xl {
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* White/translucent whites become light grays in light mode */
+:root.light .bg-white\/\[0\.02\] {
+  background-color: rgba(15, 23, 42, 0.03) !important;
+}
+
+:root.light .bg-white\/\[0\.04\] {
+  background-color: rgba(15, 23, 42, 0.04) !important;
+}
+
+:root.light .bg-white\/5 {
+  background-color: rgba(15, 23, 42, 0.05) !important;
+}
+
+:root.light .bg-white\/10 {
+  background-color: rgba(15, 23, 42, 0.07) !important;
+}
+
+:root.light .bg-white\/20 {
+  background-color: rgba(15, 23, 42, 0.12) !important;
+}
+
+/* Borders */
+:root.light .border-white\/10 {
+  border-color: rgba(15, 23, 42, 0.12) !important;
+}
+
+:root.light .border-white\/20 {
+  border-color: rgba(15, 23, 42, 0.18) !important;
+}
+
+/* glass cards */
+:root.light .backdrop-blur-md,
+:root.light .backdrop-blur-xl {
+  background-color: rgba(255, 255, 255, 0.88) !important;
+  border-color: rgba(15, 23, 42, 0.10) !important;
+  color: #0F172A;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+/* Navbar / topbar in light */
+:root.light nav,
+:root.light header {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-color: rgba(15, 23, 42, 0.10) !important;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Inputs */
+:root.light input,
+:root.light textarea,
+:root.light select {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+  border-color: rgba(15, 23, 42, 0.18) !important;
+}
+
+:root.light input::placeholder,
+:root.light textarea::placeholder {
+  color: #9CA3AF !important;
+}
+
+/* gradient text fix — not visible on light bg without dark overrides */
+:root.light .bg-clip-text.text-transparent {
+  background-image: linear-gradient(135deg, #0F172A 0%, #374151 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+/* Map area stays dark always (leaflet) */
+.leaflet-container {
+  background: #1a1a24 !important;
 }
 
 @layer base {
@@ -38,6 +199,7 @@
     margin: 0;
     padding: 0;
     min-height: 100vh;
+    transition: background-color 0.25s ease, color 0.25s ease;
   }
 
   h1,
@@ -68,15 +230,42 @@
   }
 }
 
-/* Scrollbar styling */
+/* ── Scrollbar ───────────────────────────────────────────────── */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 
-::-webkit-scrollbar-track {
+:root.light ::-webkit-scrollbar-track {
+  background: #E5E7EB;
+}
+
+:root.light ::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: 99px;
+}
+
+:root.light ::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
+}
+
+:root:not(.light) ::-webkit-scrollbar-track {
   @apply bg-bg-dark;
 }
 
-::-webkit-scrollbar-thumb {
-  @apply bg-glass-border rounded-full hover:bg-white/20 transition-colors;
+:root:not(.light) ::-webkit-scrollbar-thumb {
+  @apply bg-glass-border rounded-full;
+}
+
+:root:not(.light) ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Hide scrollbar utility */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
