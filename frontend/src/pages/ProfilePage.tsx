@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Home, CheckCircle, Wallet, Trophy, TrendingUp, FileText, Settings, LogOut, X, Upload, CreditCard, Save, Check, Camera, BarChart3, Clock, DollarSign, Edit3, Loader2, Users, UserPlus, Building2, Trash2, Sun, Moon } from 'lucide-react';
+import { Star, Home, CheckCircle, Wallet, Trophy, TrendingUp, FileText, Settings, LogOut, X, Upload, Save, Check, Camera, BarChart3, Clock, DollarSign, Edit3, Loader2, Users, UserPlus, Building2, Trash2, Sun, Moon } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
