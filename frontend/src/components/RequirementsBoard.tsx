@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Plus, Search, MessageCircle, Clock, DollarSign, X,
     CheckCircle2, User, Loader2, Tag, Car, Waves, Wind,
-    Bed, Bath, MapPin, ChevronDown, ChevronUp, Trash2
+    Bed, Bath, MapPin, ChevronDown, ChevronUp, Trash2, Copy, Check as CheckIcon
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import api from '../lib/api';
@@ -56,11 +56,53 @@ function timeAgo(dateStr: string) {
     return 'justo ahora';
 }
 
+function buildShareText(req: Requirement): string {
+    const lines: string[] = [];
+    lines.push('🏠 *REQUERIMIENTO DE PROPIEDAD*');
+    lines.push('');
+    lines.push(`👤 Agente: ${req.agent.name} ${req.agent.lastName}`);
+    if (req.propertyType) lines.push(`📋 Tipo: ${req.propertyType.charAt(0).toUpperCase() + req.propertyType.slice(1)}`);
+    if (req.tipoVivienda && req.tipoVivienda !== 'Cualquiera') lines.push(`🏘️ Vivienda: ${req.tipoVivienda}`);
+    if (req.ubicacion) lines.push(`📍 Zona: ${req.ubicacion}`);
+    if (req.minBudget || req.maxBudget) {
+        const min = req.minBudget ? `Bs. ${Number(req.minBudget).toLocaleString()}` : '0';
+        const max = req.maxBudget ? `Bs. ${Number(req.maxBudget).toLocaleString()}` : 'sin límite';
+        lines.push(`💰 Presupuesto: ${min} – ${max}`);
+    }
+    if (req.dormitorios != null) lines.push(`🛏️ Dormitorios: ${req.dormitorios}+`);
+    if (req.banos != null) lines.push(`🚿 Baños: ${req.banos}+`);
+    const features: string[] = [];
+    if (req.estacionamiento) features.push('Parqueo');
+    if (req.piscina) features.push('Piscina');
+    if (req.patio) features.push('Patio');
+    if (req.mascotas) features.push('Pet-friendly');
+    if (features.length) lines.push(`✅ Extras: ${features.join(', ')}`);
+    if (req.terreno != null) lines.push(`📐 Terreno mín: ${req.terreno} m²`);
+    if (req.construccion != null) lines.push(`🏗️ Construcción mín: ${req.construccion} m²`);
+    lines.push('');
+    lines.push(`💬 "${req.description}"`);
+    if (req.tags && req.tags.length > 0) lines.push(`🏷️ Tags: ${req.tags.map(t => '#' + t).join(' ')}`);
+    lines.push('');
+    lines.push('📲 ¡Comunícate si tienes algo que se ajuste!');
+    return lines.join('\n');
+}
+
 function ReqCard({ req, isOwn, onDelete, onChat, currentUserId }: {
     req: Requirement; isOwn: boolean; onDelete: (id: string) => void;
     onChat: (agentId: string) => void; currentUserId: string;
 }) {
     const [expanded, setExpanded] = useState(false);
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = async () => {
+        try {
+            await navigator.clipboard.writeText(buildShareText(req));
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2500);
+        } catch {
+            alert('No se pudo copiar. Copia manualmente.');
+        }
+    };
 
     const boolFeature = (v: boolean | null, icon: React.ReactNode, label: string) =>
         v ? <span className="flex items-center gap-1 text-xs bg-white/10 px-2.5 py-1 rounded-full">{icon}<span>{label}</span></span> : null;
@@ -90,9 +132,21 @@ function ReqCard({ req, isOwn, onDelete, onChat, currentUserId }: {
                     </div>
                     <div className="flex items-center gap-2">
                         {isOwn && (
-                            <button onClick={() => onDelete(req.id)} className="text-red-400 hover:text-red-300 p-2 bg-red-500/10 rounded-lg transition-colors" title="Eliminar">
-                                <Trash2 size={14} />
-                            </button>
+                            <>
+                                <button onClick={handleCopy}
+                                    className={`p-2 rounded-lg transition-all flex items-center gap-1.5 text-xs font-medium ${
+                                        copied
+                                            ? 'bg-green-500/15 text-green-400 border border-green-500/30'
+                                            : 'bg-white/5 text-gray-400 hover:bg-accent-orange/10 hover:text-accent-orange border border-transparent'
+                                    }`}
+                                    title="Copiar para compartir">
+                                    {copied ? <CheckIcon size={13} /> : <Copy size={13} />}
+                                    <span className="hidden sm:inline">{copied ? 'Copiado' : 'Copiar'}</span>
+                                </button>
+                                <button onClick={() => onDelete(req.id)} className="text-red-400 hover:text-red-300 p-2 bg-red-500/10 rounded-lg transition-colors" title="Eliminar">
+                                    <Trash2 size={14} />
+                                </button>
+                            </>
                         )}
                         <button onClick={() => setExpanded(p => !p)} className="text-gray-500 hover:text-white p-2 bg-white/5 rounded-lg transition-colors">
                             {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -241,7 +295,7 @@ function CreateRequirementForm({ onSuccess, onCancel }: { onSuccess: () => void;
     return (
         <form onSubmit={handleSubmit(onSubmit)} className="glass-card border-l-4 border-l-accent-orange p-5 flex flex-col gap-5 mb-4">
             <div className="flex justify-between items-center">
-                <h3 className="font-semibold flex items-center gap-2"><Search size={16} className="text-accent-orange" /> Crear Pedido de Propiedad</h3>
+                <h3 className="font-semibold flex items-center gap-2"><Search size={16} className="text-accent-orange" /> Crear Requerimiento</h3>
                 <button type="button" onClick={onCancel} className="text-gray-500 hover:text-white transition-colors"><X size={16} /></button>
             </div>
 
@@ -406,7 +460,7 @@ function CreateRequirementForm({ onSuccess, onCancel }: { onSuccess: () => void;
                 <button type="button" onClick={onCancel} className="text-sm text-gray-500 hover:text-white transition-colors px-4 py-2.5">Cancelar</button>
                 <button type="submit" disabled={isSubmitting} className="btn-primary py-2 px-6 text-sm flex gap-2 items-center">
                     {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-                    Publicar Pedido
+                    Publicar Requerimiento
                 </button>
             </div>
         </form>
@@ -441,7 +495,7 @@ export default function RequirementsBoard() {
     useEffect(() => { fetchRequirements(); }, [viewMode]);
 
     const handleDelete = async (id: string) => {
-        if (!confirm('¿Seguro que quieres eliminar este pedido?')) return;
+        if (!confirm('¿Seguro que quieres eliminar este requerimiento?')) return;
         try {
             await api.delete(`/requirements/${id}`);
             fetchRequirements();
@@ -456,11 +510,11 @@ export default function RequirementsBoard() {
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                 <div className="flex bg-white/5 p-1 rounded-xl w-full sm:w-auto">
                     <button onClick={() => setViewMode('all')} className={`flex-1 sm:flex-none px-5 py-2 rounded-lg text-sm transition-all ${viewMode === 'all' ? 'bg-accent-orange text-white' : 'text-gray-400 hover:text-white'}`}>Muro de Agentes</button>
-                    <button onClick={() => setViewMode('mine')} className={`flex-1 sm:flex-none px-5 py-2 rounded-lg text-sm transition-all ${viewMode === 'mine' ? 'bg-accent-orange text-white' : 'text-gray-400 hover:text-white'}`}>Mis Pedidos</button>
+                    <button onClick={() => setViewMode('mine')} className={`flex-1 sm:flex-none px-5 py-2 rounded-lg text-sm transition-all ${viewMode === 'mine' ? 'bg-accent-orange text-white' : 'text-gray-400 hover:text-white'}`}>Mis Requerimientos</button>
                 </div>
                 {!showForm && (
                     <button onClick={() => setShowForm(true)} className="w-full sm:w-auto btn-primary py-2 px-5 text-sm flex items-center justify-center gap-2">
-                        <Plus size={16} /> Crear Pedido
+                        <Plus size={16} /> Crear Requerimiento
                     </button>
                 )}
             </div>
@@ -480,8 +534,8 @@ export default function RequirementsBoard() {
             ) : requirements.length === 0 ? (
                 <div className="glass-card p-10 text-center flex flex-col items-center border border-glass-border">
                     <Search size={40} className="text-gray-600 mb-4" />
-                    <p className="text-gray-400 text-sm">No hay pedidos activos en este momento.</p>
-                    {viewMode === 'mine' && <button onClick={() => setShowForm(true)} className="mt-4 btn-primary py-2 px-5 text-sm flex gap-2 items-center"><Plus size={15} />Crear mi primer pedido</button>}
+                    <p className="text-gray-400 text-sm">No hay requerimientos activos en este momento.</p>
+                    {viewMode === 'mine' && <button onClick={() => setShowForm(true)} className="mt-4 btn-primary py-2 px-5 text-sm flex gap-2 items-center"><Plus size={15} />Crear mi primer requerimiento</button>}
                 </div>
             ) : (
                 <div className="grid grid-cols-1 gap-4">

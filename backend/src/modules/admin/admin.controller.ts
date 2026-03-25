@@ -7,6 +7,7 @@ import {
   Header,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
+import { PropertiesService } from '../properties/properties.service';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -16,7 +17,10 @@ import { Role } from '@prisma/client';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.admin)
 export class AdminController {
-  constructor(private readonly adminService: AdminService) { }
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly propertiesService: PropertiesService,
+  ) { }
 
   @Get('metrics')
   getMetrics() {
@@ -56,5 +60,15 @@ export class AdminController {
   @Get('top-agents')
   getTopAgents() {
     return this.adminService.getTopAgents();
+  }
+
+  @Get('properties/all')
+  getAllProperties() {
+    return this.propertiesService.findAllIncludingDemo();
+  }
+
+  @Patch('properties/:id/toggle-demo')
+  toggleDemoProperty(@Param('id') id: string) {
+    return this.propertiesService.toggleDemo(id);
   }
 }

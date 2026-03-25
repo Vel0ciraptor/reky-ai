@@ -28,7 +28,7 @@ export class SearchService {
     page?: number;
     limit?: number;
   }) {
-    const where: any = {};
+    const where: any = { isDemo: false }; // always exclude demo/seed properties
 
     if (filters.tipo) where.tipo = filters.tipo;
 

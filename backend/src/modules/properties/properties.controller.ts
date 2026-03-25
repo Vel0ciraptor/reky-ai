@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Body,
   Param,
   UseGuards,
@@ -47,5 +48,12 @@ export class PropertiesController {
     },
   ) {
     return this.propertiesService.updateProperty(id, body);
+  }
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard)
+  remove(@Param('id') id: string, @Request() req: any) {
+    const agentId = req.user?.sub || req.user?.id;
+    const isAdmin = req.user?.role === 'admin';
+    return this.propertiesService.deleteProperty(id, agentId, isAdmin);
   }
 }

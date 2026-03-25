@@ -3,6 +3,7 @@ import {
   ConflictException,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../../infra/database/prisma.service';
 import { CreatePropertyDto } from './dto/create-property.dto';
@@ -74,6 +75,7 @@ export class PropertiesService {
 
   async findAll() {
     return this.prisma.property.findMany({
+      where: { isDemo: false },
       include: {
         agents: {
           include: {
@@ -88,6 +90,27 @@ export class PropertiesService {
         },
         tags: true,
       },
+    });
+  }
+
+  async findAllIncludingDemo() {
+    // Admin-only: returns everything
+    return this.prisma.property.findMany({
+      include: {
+        agents: { include: { agent: { select: { name: true, lastName: true } } } },
+        images: { orderBy: { orden: 'asc' }, take: 1 },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async toggleDemo(id: string) {
+    const prop = await this.prisma.property.findUnique({ where: { id } });
+    if (!prop) throw new NotFoundException('Propiedad no encontrada');
+    return this.prisma.property.update({
+      where: { id },
+      data: { isDemo: !prop.isDemo },
+      select: { id: true, isDemo: true, descripcion: true, ubicacion: true },
     });
   }
 
@@ -136,5 +159,22 @@ export class PropertiesService {
         }),
       },
     });
+  }
+  async deleteProperty(id: string, agentId: string, isAdmin: boolean) {
+    const property = await this.prisma.property.findUnique({
+      where: { id },
+      include: { agents: true },
+    });
+    if (!property) throw new NotFoundException('Propiedad no encontrada');
+    const isOwner = property.agents.some((a) => a.agentId === agentId);
+    if (!isOwner && !isAdmin)
+      throw new ForbiddenException('No tienes permiso para eliminar esta propiedad');
+
+    // Delete related records first
+    await this.prisma.propertyImage.deleteMany({ where: { propertyId: id } });
+    await this.prisma.propertyTag.deleteMany({ where: { propertyId: id } });
+    await this.prisma.agentProperty.deleteMany({ where: { propertyId: id } });
+    await this.prisma.transaction.deleteMany({ where: { propertyId: id } });
+    return this.prisma.property.delete({ where: { id } });
   }
 }

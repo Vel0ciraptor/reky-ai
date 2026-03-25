@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Home, CheckCircle, Wallet, Trophy, TrendingUp, FileText, Settings, LogOut, X, Upload, Save, Check, Camera, BarChart3, Clock, DollarSign, Edit3, Loader2, Users, UserPlus, Building2, Trash2, Sun, Moon } from 'lucide-react';
+import { Star, Home, CheckCircle, Wallet, Trophy, TrendingUp, FileText, Settings, LogOut, X, Upload, Save, Check, Camera, BarChart3, Clock, DollarSign, Edit3, Loader2, Users, UserPlus, Building2, Trash2, Sun, Moon, ExternalLink } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../lib/api';
 import AdminProfilePage from './AdminProfilePage';
 
@@ -31,12 +31,24 @@ interface MyProperty {
 const ProfilePage = () => {
     const { agent, logout, refreshAgent } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
 
     // ── Render admin dashboard if admin ──────────────────────────
     if (agent?.role === 'admin') return <AdminProfilePage />;
 
     const [activeModal, setActiveModal] = useState<'report' | 'wallet' | 'properties' | 'settings' | 'agency' | null>(null);
     const [settingsTab, setSettingsTab] = useState<'perfil' | 'verificacion'>('verificacion');
+
+    // Auto-open modal from URL param ?tab=properties
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const tab = params.get('tab');
+        if (tab === 'properties') {
+            setActiveModal('properties');
+            // Clean URL without reload
+            window.history.replaceState(null, '', location.pathname);
+        }
+    }, [location.search]);
 
     // Agency panel state
     const [agencyDashboard, setAgencyDashboard] = useState<any>(null);
@@ -288,6 +300,16 @@ const ProfilePage = () => {
             setEditingPropId(null);
         } catch (err) { console.error(err); }
         finally { setSaving(false); }
+    };
+
+    const handleDeleteProperty = async (propId: string) => {
+        if (!confirm('¿Eliminar esta propiedad? Esta acción no se puede deshacer.')) return;
+        try {
+            await api.delete(`/properties/${propId}`);
+            await fetchMyProperties();
+        } catch (err: any) {
+            alert('Error al eliminar: ' + (err.response?.data?.message || 'Error de conexión'));
+        }
     };
 
     // ── Display ──────────────────────────────────────────────────
@@ -872,6 +894,20 @@ const ProfilePage = () => {
                                                             <button onClick={() => editingPropId === p.id ? setEditingPropId(null) : startEdit(p)}
                                                                 className={`p-2 rounded-lg text-xs transition-all flex-shrink-0 ${editingPropId === p.id ? 'bg-accent-orange text-white' : 'bg-white/5 text-gray-400 hover:text-accent-orange'}`}>
                                                                 <Edit3 size={14} />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => navigate(`/property/${p.id}`)}
+                                                                className="p-2 rounded-lg text-xs transition-all flex-shrink-0 bg-white/5 text-gray-400 hover:text-blue-400"
+                                                                title="Ver inmueble"
+                                                            >
+                                                                <ExternalLink size={14} />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeleteProperty(p.id)}
+                                                                className="p-2 rounded-lg text-xs transition-all flex-shrink-0 bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                                                                title="Eliminar propiedad"
+                                                            >
+                                                                <Trash2 size={14} />
                                                             </button>
                                                         </div>
 

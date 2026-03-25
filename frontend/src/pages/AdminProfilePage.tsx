@@ -65,10 +65,11 @@ const AdminProfilePage = () => {
     // ── State ─────────────────────────────────────────────────────
     const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
     const [pendingTxs, setPendingTxs] = useState<any[]>([]);
-    const [pendingProps, setPendingProps] = useState<any[]>([]);
+    const [allProps, setAllProps] = useState<any[]>([]);
     const [topAgents, setTopAgents] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [verifyingId, setVerifyingId] = useState<string | null>(null);
+    const [togglingDemoId, setTogglingDemoId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'overview' | 'sales' | 'properties' | 'agents'>('overview');
 
     // Charts carousel
@@ -88,16 +89,16 @@ const AdminProfilePage = () => {
     const fetchAll = useCallback(async () => {
         setIsLoading(true);
         try {
-            const [mRes, txRes, propsRes, agentsRes] = await Promise.all([
+            const [mRes, txRes, agentsRes, allPropsRes] = await Promise.all([
                 api.get('/admin/metrics'),
                 api.get('/admin/transactions/pending'),
-                api.get('/admin/properties/pending'),
                 api.get('/admin/top-agents'),
+                api.get('/admin/properties/all'),
             ]);
             setMetrics(mRes.data);
             setPendingTxs(txRes.data);
-            setPendingProps(propsRes.data);
             setTopAgents(agentsRes.data);
+            setAllProps(allPropsRes.data);
         } catch (err) {
             console.error('Admin fetch error:', err);
         } finally {
@@ -123,6 +124,20 @@ const AdminProfilePage = () => {
     };
 
     const handleLogout = () => { logout(); navigate('/'); };
+
+    const handleToggleDemo = async (propId: string) => {
+        setTogglingDemoId(propId);
+        try {
+            await api.patch(`/admin/properties/${propId}/toggle-demo`);
+            // Refresh local state or re-fetch
+            const res = await api.get('/admin/properties/all');
+            setAllProps(res.data);
+        } catch (err) {
+            console.error('Error toggling demo status:', err);
+        } finally {
+            setTogglingDemoId(null);
+        }
+    };
 
     const handleDownloadCSV = async () => {
         if (!metrics) return;
@@ -609,41 +624,58 @@ const AdminProfilePage = () => {
                     {activeTab === 'properties' && (
                         <div className="space-y-2.5 max-h-[55vh] overflow-y-auto pr-1 -mr-1">
                             <p className="text-[9px] text-white/20 uppercase tracking-widest mb-3 font-medium">
-                                Propiedades recientes · {pendingProps.length} encontradas
+                                Todas las propiedades · {allProps.length} encontradas
                             </p>
-                            {pendingProps.length === 0 ? (
+                            {allProps.length === 0 ? (
                                 <div className="text-center py-14">
                                     <Home size={28} className="text-white/10 mx-auto mb-3" />
-                                    <p className="text-sm text-white/30">Sin propiedades recientes</p>
+                                    <p className="text-sm text-white/30">Sin propiedades registradas</p>
                                 </div>
                             ) : (
-                                pendingProps.map((prop: any) => (
+                                allProps.map((prop: any) => (
                                     <motion.div key={prop.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                                         className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:border-white/[0.07] transition-all">
-                                        <div className="w-12 h-12 rounded-xl bg-white/[0.04] flex-shrink-0 overflow-hidden">
+                                        <div className="w-12 h-12 rounded-xl bg-white/[0.04] flex-shrink-0 overflow-hidden relative">
                                             {prop.images?.[0]?.url
                                                 ? <img src={prop.images[0].url} alt="" className="w-full h-full object-cover" />
                                                 : <div className="w-full h-full flex items-center justify-center"><Home size={14} className="text-white/10" /></div>
                                             }
+                                            {prop.isDemo && (
+                                                <div className="absolute inset-0 bg-red-500/20 flex items-center justify-center">
+                                                    <span className="bg-red-500 text-white text-[7px] font-bold px-1 rounded">DEMO</span>
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-xs font-medium text-white/60 truncate">{prop.ubicacion}</p>
+                                            <div className="flex items-center gap-2">
+                                                <p className="text-xs font-medium text-white/60 truncate">{prop.ubicacion}</p>
+                                                {prop.isDemo && <span className="text-[8px] text-red-400 font-bold uppercase tracking-tighter">Oculta</span>}
+                                            </div>
                                             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                                                 <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium capitalize ${prop.tipo === 'venta' ? 'bg-emerald-500/10 text-emerald-400/60' : prop.tipo === 'alquiler' ? 'bg-blue-500/10 text-blue-400/60' : 'bg-purple-500/10 text-purple-400/60'}`}>
                                                     {prop.tipo}
                                                 </span>
                                                 <span className="text-xs text-white/40 font-semibold tabular-nums">${Number(prop.precio).toLocaleString()}</span>
-                                                <span className="text-[9px] text-white/15">{prop.matricula}</span>
                                             </div>
                                             {prop.agents?.[0]?.agent && (
                                                 <p className="text-[9px] text-white/15 mt-0.5">
                                                     {prop.agents[0].agent.name} {prop.agents[0].agent.lastName}
-                                                    {prop.agents[0].agent.agency?.name && ` · ${prop.agents[0].agent.agency.name}`}
                                                 </p>
                                             )}
                                         </div>
-                                        <div className="flex-shrink-0 text-right">
-                                            <p className="text-[9px] text-white/15">{new Date(prop.createdAt).toLocaleDateString('es-BO', { day: '2-digit', month: 'short' })}</p>
+                                        <div className="flex items-center gap-2 flex-shrink-0">
+                                            <button
+                                                onClick={() => handleToggleDemo(prop.id)}
+                                                disabled={togglingDemoId === prop.id}
+                                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all border ${prop.isDemo
+                                                        ? 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20'
+                                                        : 'bg-white/5 text-white/40 border-white/10 hover:bg-white/10 hover:text-white/60'
+                                                    }`}
+                                            >
+                                                {togglingDemoId === prop.id ? (
+                                                    <Loader2 size={12} className="animate-spin" />
+                                                ) : prop.isDemo ? 'Hacer Real' : 'Hacer Demo'}
+                                            </button>
                                         </div>
                                     </motion.div>
                                 ))

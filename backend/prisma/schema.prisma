@@ -105,6 +105,8 @@ model Property {
   tiempoAnticretico  Int?            @map("tiempo_anticretico")
   lat                Float?
   lng                Float?
+  matricula          String?         
+  isDemo             Boolean         @default(false) @map("is_demo")
   createdAt          DateTime        @default(now()) @map("created_at")
   
   agents             PropertyAgent[]

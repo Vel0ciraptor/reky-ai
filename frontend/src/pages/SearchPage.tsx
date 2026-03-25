@@ -71,37 +71,55 @@ const tipoColor: Record<string, string> = {
     anticretico: 'text-purple-400 bg-purple-400/10 border-purple-400/20',
 };
 
-// ── Dual Range Slider ───────────────────────────────────────────
-const PriceRangeSlider = ({ min, max, valueMin, valueMax, onChange }: {
-    min: number; max: number; valueMin: number; valueMax: number;
+// ── Editable Price Inputs ───────────────────────────────────────
+const PriceInputs = ({ valueMin, valueMax, onChange }: {
+    valueMin: number; valueMax: number;
     onChange: (min: number, max: number) => void;
 }) => {
-    const pct = (v: number) => ((v - min) / (max - min)) * 100;
-    const midPct = (pct(valueMin) + pct(valueMax)) / 2;
+    const [localMin, setLocalMin] = useState(valueMin === 0 ? '' : String(valueMin));
+    const [localMax, setLocalMax] = useState(valueMax === 0 ? '' : String(valueMax));
+
+    const commit = (newMin: string, newMax: string) => {
+        const mn = newMin === '' ? 0 : Math.max(0, Number(newMin));
+        const mx = newMax === '' ? 0 : Math.max(0, Number(newMax));
+        if (mx > 0 && mn > mx) return; // invalid range, ignore
+        onChange(mn, mx);
+    };
+
     return (
         <div className="flex flex-col gap-2">
-            <div className="flex justify-between text-xs text-gray-500">
-                <span className="tabular-nums">${valueMin.toLocaleString()}</span>
-                <span className="tabular-nums">${valueMax.toLocaleString()}</span>
+            <div className="flex gap-2 items-center">
+                <div className="flex-1 relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 font-medium">Bs.</span>
+                    <input
+                        type="number"
+                        min={0}
+                        value={localMin}
+                        onChange={e => setLocalMin(e.target.value)}
+                        onBlur={() => { commit(localMin, localMax); }}
+                        placeholder="Mín"
+                        className="w-full bg-white/5 border border-glass-border pl-8 pr-2 py-1.5 rounded-lg text-xs focus:outline-none focus:border-accent-orange"
+                    />
+                </div>
+                <span className="text-gray-600 text-xs">—</span>
+                <div className="flex-1 relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 font-medium">Bs.</span>
+                    <input
+                        type="number"
+                        min={0}
+                        value={localMax}
+                        onChange={e => setLocalMax(e.target.value)}
+                        onBlur={() => { commit(localMin, localMax); }}
+                        placeholder="Máx"
+                        className="w-full bg-white/5 border border-glass-border pl-8 pr-2 py-1.5 rounded-lg text-xs focus:outline-none focus:border-accent-orange"
+                    />
+                </div>
             </div>
-            <div className="relative h-1.5 bg-white/10 rounded-full">
-                <div className="absolute h-full bg-accent-orange rounded-full transition-all"
-                    style={{ left: `${pct(valueMin)}%`, right: `${100 - pct(valueMax)}%` }} />
-                {/* Min slider – clip to left half so it doesn't block max handle */}
-                <input type="range" min={min} max={max} step={1000} value={valueMin}
-                    onChange={e => onChange(Math.min(Number(e.target.value), valueMax - 1000), valueMax)}
-                    className="absolute inset-0 w-full opacity-0 cursor-pointer"
-                    style={{ zIndex: 3, clipPath: `inset(0 ${100 - midPct}% 0 0)` }} />
-                {/* Max slider – clip to right half */}
-                <input type="range" min={min} max={max} step={1000} value={valueMax}
-                    onChange={e => onChange(valueMin, Math.max(Number(e.target.value), valueMin + 1000))}
-                    className="absolute inset-0 w-full opacity-0 cursor-pointer"
-                    style={{ zIndex: 3, clipPath: `inset(0 0 0 ${midPct}%)` }} />
-                <div className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-accent-orange rounded-full border-2 border-bg-dark shadow pointer-events-none"
-                    style={{ left: `calc(${pct(valueMin)}% - 7px)`, zIndex: 4 }} />
-                <div className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-accent-orange rounded-full border-2 border-bg-dark shadow pointer-events-none"
-                    style={{ left: `calc(${pct(valueMax)}% - 7px)`, zIndex: 4 }} />
-            </div>
+            {(valueMin > 0 || valueMax > 0) && (
+                <p className="text-[10px] text-gray-600 tabular-nums">
+                    {valueMin > 0 ? `Bs. ${valueMin.toLocaleString()}` : '0'} – {valueMax > 0 ? `Bs. ${valueMax.toLocaleString()}` : 'sin límite'}
+                </p>
+            )}
         </div>
     );
 };
@@ -342,7 +360,7 @@ const FiltersPanel = ({
         <div>
             <div className="flex items-center justify-between mb-2">
                 <label className="text-[11px] uppercase tracking-widest text-gray-600 flex items-center gap-1">
-                    <DollarSign size={10} /> Precio
+                    <DollarSign size={10} /> Precio (Bs.)
                 </label>
                 <div className="flex gap-1">
                     {(['range', 'exact'] as const).map(m => (
@@ -354,14 +372,14 @@ const FiltersPanel = ({
                 </div>
             </div>
             {priceMode === 'range' ? (
-                <PriceRangeSlider min={0} max={500000}
+                <PriceInputs
                     valueMin={priceRange.min} valueMax={priceRange.max}
                     onChange={(mn, mx) => setPriceRange({ min: mn, max: mx })} />
             ) : (
                 <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs">$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs">Bs.</span>
                     <input type="number" value={exactPrice} onChange={e => setExactPrice(e.target.value)}
-                        placeholder="Precio exacto" className="w-full bg-white/5 border border-glass-border pl-6 pr-3 py-2 rounded-lg text-xs focus:outline-none focus:border-accent-orange" />
+                        placeholder="Precio exacto" className="w-full bg-white/5 border border-glass-border pl-10 pr-3 py-2 rounded-lg text-xs focus:outline-none focus:border-accent-orange" />
                 </div>
             )}
         </div>
@@ -497,7 +515,7 @@ export default function SearchPage() {
     const [tipo, setTipo] = useState('');
     const [dormitorios, setDormitorios] = useState('');
     const [showFilters, setShowFilters] = useState(false);
-    const [priceRange, setPriceRange] = useState({ min: 0, max: 500000 });
+    const [priceRange, setPriceRange] = useState({ min: 0, max: 0 });
     const [priceMode, setPriceMode] = useState<'range' | 'exact'>('range');
     const [exactPrice, setExactPrice] = useState('');
 
@@ -550,7 +568,7 @@ export default function SearchPage() {
         if (priceMode === 'exact' && exactPrice) { p.minPrecio = exactPrice; p.maxPrecio = exactPrice; }
         else if (priceMode === 'range') {
             if (priceRange.min > 0) p.minPrecio = String(priceRange.min);
-            if (priceRange.max < 500000) p.maxPrecio = String(priceRange.max);
+            if (priceRange.max > 0) p.maxPrecio = String(priceRange.max);
         }
 
         if (mascotas) p.mascotas = 'true';
@@ -600,11 +618,11 @@ export default function SearchPage() {
     };
 
     const hasActiveFilters = tipo || dormitorios || banos || mascotas || estacionamiento || patio || piscina || tipoVivienda || terrenoMin || terrenoMax || construccionMin || construccionMax ||
-        (priceMode === 'range' && (priceRange.min > 0 || priceRange.max < 500000)) ||
+        (priceMode === 'range' && (priceRange.min > 0 || priceRange.max > 0)) ||
         (priceMode === 'exact' && exactPrice);
 
     const clearFilters = () => {
-        setTipo(''); setDormitorios(''); setBanos(''); setPriceRange({ min: 0, max: 500000 }); setExactPrice('');
+        setTipo(''); setDormitorios(''); setBanos(''); setPriceRange({ min: 0, max: 0 }); setExactPrice('');
         setMascotas(false); setEstacionamiento(false); setPatio(false); setPiscina(false); setTipoVivienda(''); setTerrenoMin(''); setTerrenoMax(''); setConstruccionMin(''); setConstruccionMax('');
     };
 

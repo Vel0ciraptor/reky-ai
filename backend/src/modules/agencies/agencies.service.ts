@@ -75,7 +75,12 @@ export class AgenciesService {
         avatarUrl: true,
         createdAt: true,
         wallet: { select: { balance: true } },
-        _count: { select: { properties: { where: { enCoventa: false } }, transactions: true } },
+        _count: {
+          select: {
+            properties: { where: { enCoventa: false, property: { isDemo: false } } },
+            transactions: true,
+          },
+        },
       },
       orderBy: { points: 'desc' },
     });
@@ -93,7 +98,12 @@ export class AgenciesService {
             phone: true,
             avatarUrl: true,
             points: true,
-            _count: { select: { properties: { where: { enCoventa: false } }, transactions: true } },
+            _count: {
+              select: {
+                properties: { where: { enCoventa: false, property: { isDemo: false } } },
+                transactions: true,
+              },
+            },
           },
         },
       },
@@ -466,7 +476,10 @@ export class AgenciesService {
     });
 
     const relations = await this.prisma.propertyAgent.findMany({
-      where: { agentId: { in: agentIds.map((a) => a.id) } },
+      where: {
+        agentId: { in: agentIds.map((a) => a.id) },
+        property: { isDemo: false },
+      },
       include: {
         property: {
           include: { images: { orderBy: { orden: 'asc' }, take: 1 } },

@@ -15,7 +15,7 @@ const navItems = [
     { name: 'Buscar', icon: Search, path: '/search' },
     { name: 'Chat', icon: MessageSquare, path: '/chat' },
     { name: 'Publicar', icon: Plus, path: '/publish' },
-    { name: 'Pedidos', icon: ClipboardList, path: '/requirements' },
+    { name: 'Req.', icon: ClipboardList, path: '/requirements' },
     { name: 'Perfil', icon: User, path: '/profile' },
 ];
 

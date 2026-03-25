@@ -107,7 +107,11 @@ export class AgentsService {
 
   async getMyProperties(agentId: string) {
     const relations = await this.prisma.propertyAgent.findMany({
-      where: { agentId, enCoventa: false },
+      where: {
+        agentId,
+        enCoventa: false,
+        property: { isDemo: false },
+      },
       include: {
         property: {
           include: { images: { orderBy: { orden: 'asc' }, take: 1 } },

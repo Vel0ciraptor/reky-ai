@@ -8,10 +8,10 @@ import { useAuth } from '../context/AuthContext';
 import {
     Plus, MapPin, DollarSign, Bed, Bath, Car,
     Wind, Waves, Clock, FileText, Loader2, CheckCircle2,
-    Tag, X, Navigation, Image as ImageIcon, Camera, Trash2, Wallet, ChevronRight
+    Tag, X, Navigation, Image as ImageIcon, Camera, Trash2, Wallet, ChevronRight, Eye, List
 } from 'lucide-react';
 import api from '../lib/api';
-// No requirements board import needed anymore
+import { useNavigate } from 'react-router-dom';
 
 // Fix Leaflet icons in Vite
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -132,6 +132,7 @@ const SlideButton = ({ onConfirm, isSubmitting }: { onConfirm: () => void, isSub
 
 const PublishProperty = () => {
     const { refreshAgent } = useAuth();
+    const navigate = useNavigate();
     const [pendingData, setPendingData] = useState<PublishForm | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
@@ -258,9 +259,17 @@ const PublishProperty = () => {
                 </motion.div>
                 <h2 className="text-3xl font-bold mb-3">¡Propiedad Publicada!</h2>
                 <p className="text-gray-400 mb-8 max-w-sm">Tu propiedad está registrada y visible en el mapa para otros agentes.</p>
-                <button onClick={() => { setIsSuccess(false); setMapPin(null); setTags([]); setImages([]); }} className="btn-primary">
-                    Publicar otra propiedad
-                </button>
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <button onClick={() => { setIsSuccess(false); setMapPin(null); setTags([]); setImages([]); }} className="btn-primary">
+                        Publicar otra propiedad
+                    </button>
+                    <button
+                        onClick={() => navigate('/profile?tab=properties')}
+                        className="flex items-center gap-2 px-5 py-3 rounded-xl border border-glass-border text-gray-300 hover:border-accent-orange hover:text-accent-orange transition-all text-sm font-semibold"
+                    >
+                        <Eye size={16} /> Ver mis propiedades
+                    </button>
+                </div>
             </div>
         );
     }
@@ -321,6 +330,13 @@ const PublishProperty = () => {
                         </p>
                     </div>
                 </div>
+                <button
+                    type="button"
+                    onClick={() => navigate('/profile?tab=properties')}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl border border-glass-border text-gray-400 hover:border-accent-orange hover:text-accent-orange transition-all text-xs font-semibold flex-shrink-0"
+                >
+                    <List size={14} /> Mis Propiedades
+                </button>
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
