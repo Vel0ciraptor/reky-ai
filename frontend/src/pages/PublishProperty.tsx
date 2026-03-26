@@ -1,5 +1,5 @@
-import { useState, useCallback, useRef } from 'react';
-import { useForm } from 'react-hook-form';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
@@ -62,9 +62,14 @@ interface PublishForm {
     tipo: PropertyType;
     precio: number;
     dormitorios: number;
+    dormitoriosDetalles?: { tipo: string; dimensiones: string }[];
     banos: number;
+    banosDetalles?: { tipo: string }[];
     estacionamiento: boolean;
+    parqueos: number;
+    parqueoTipo?: 'con_techo' | 'aire_libre';
     patio: boolean;
+    patios: number;
     piscina: boolean;
     mascotas: boolean;
     tipoVivienda: string;
@@ -143,13 +148,56 @@ const PublishProperty = () => {
     const [images, setImages] = useState<string[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<PublishForm>({
+    const { register, handleSubmit, watch, setValue, control, formState: { errors } } = useForm<PublishForm>({
         defaultValues: {
             tipo: 'venta', dormitorios: 1, banos: 1,
-            estacionamiento: false, patio: false, piscina: false, mascotas: false,
+            estacionamiento: false, parqueos: 1, parqueoTipo: 'con_techo',
+            patio: false, patios: 0, piscina: false, mascotas: false,
             tipoVivienda: 'Cualquiera',
+            dormitoriosDetalles: [{ tipo: 'Suite', dimensiones: '' }],
+            banosDetalles: [{ tipo: 'En suite' }]
         }
     });
+
+    const { fields: roomFields, append: appendRoom, remove: removeRoom } = useFieldArray({
+        control,
+        name: "dormitoriosDetalles"
+    });
+
+    const { fields: bathFields, append: appendBath, remove: removeBath } = useFieldArray({
+        control,
+        name: "banosDetalles"
+    });
+
+    const numDormitorios = watch('dormitorios');
+    const numBanos = watch('banos');
+
+    // Sync field arrays with the counts
+    useEffect(() => {
+        const currentCount = roomFields.length;
+        if (numDormitorios > currentCount) {
+            for (let i = currentCount; i < numDormitorios; i++) {
+                appendRoom({ tipo: 'Habitación', dimensiones: '' });
+            }
+        } else if (numDormitorios < currentCount) {
+            for (let i = currentCount; i > numDormitorios; i--) {
+                removeRoom(i - 1);
+            }
+        }
+    }, [numDormitorios, appendRoom, removeRoom, roomFields.length]);
+
+    useEffect(() => {
+        const currentCount = bathFields.length;
+        if (numBanos > currentCount) {
+            for (let i = currentCount; i < numBanos; i++) {
+                appendBath({ tipo: 'Compartido' });
+            }
+        } else if (numBanos < currentCount) {
+            for (let i = currentCount; i > numBanos; i--) {
+                removeBath(i - 1);
+            }
+        }
+    }, [numBanos, appendBath, removeBath, bathFields.length]);
 
     const selectedType = watch('tipo');
 
@@ -230,11 +278,13 @@ const PublishProperty = () => {
                 lng: mapPin?.lng,
                 tags,
                 images,
+                estacionamiento: pendingData.parqueos > 0,
+                patio: pendingData.patios > 0,
             };
 
             // Clean up NaN values which fail backend validation
-            if (isNaN(payload.terreno)) delete payload.terreno;
-            if (isNaN(payload.construccion)) delete payload.construccion;
+            if (!payload.terreno && payload.terreno !== 0) delete payload.terreno;
+            if (!payload.construccion && payload.construccion !== 0) delete payload.construccion;
             if (isNaN(payload.tiempoAlquiler)) delete payload.tiempoAlquiler;
             if (isNaN(payload.tiempoAnticretico)) delete payload.tiempoAnticretico;
             await api.post('/properties', payload);
@@ -506,30 +556,116 @@ const PublishProperty = () => {
 
                 {/* ── CARACTERÍSTICAS ── */}
                 <div className="glass-card p-5">
-                    <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-4">Características</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="text-xs text-gray-600 mb-1.5 flex items-center gap-1"><Bed size={12} /> Dormitorios</label>
-                            <input type="number" min="0" {...register('dormitorios', { valueAsNumber: true })}
-                                className="w-full bg-white/5 border border-glass-border px-3 py-2.5 rounded-xl focus:outline-none focus:border-accent-orange text-sm" />
+                    <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-4">Características Detalladas</h3>
+                    
+                    <div className="flex flex-col gap-6">
+                        {/* DORMITORIOS SECTION */}
+                        <div className="p-4 rounded-xl bg-white/3 border border-glass-border">
+                            <div className="flex items-center justify-between mb-4">
+                                <label className="text-xs font-bold uppercase text-gray-400 flex items-center gap-2">
+                                    <Bed size={16} className="text-accent-orange" /> Dormitorios
+                                </label>
+                                <input type="number" min="1" {...register('dormitorios', { valueAsNumber: true })}
+                                    className="w-20 bg-white/5 border border-glass-border px-3 py-1.5 rounded-lg focus:outline-none focus:border-accent-orange text-sm text-center" />
+                            </div>
+                            
+                            <div className="space-y-3">
+                                {roomFields.map((field, index) => (
+                                    <div key={field.id} className="grid grid-cols-2 gap-3 p-3 rounded-lg bg-white/5 border border-glass-border/30">
+                                        <div>
+                                            <label className="text-[10px] text-gray-500 uppercase block mb-1">Tipo #{index + 1}</label>
+                                            <select {...register(`dormitoriosDetalles.${index}.tipo` as const)} 
+                                                className="w-full bg-bg-dark border border-glass-border px-2 py-1.5 rounded text-xs outline-none">
+                                                <option value="Suite">Suite</option>
+                                                <option value="Habitación">Habitación</option>
+                                                <option value="Cuarto de visitas">Cuarto de visitas</option>
+                                                <option value="Cuarto de servicio">Cuarto de servicio</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] text-gray-500 uppercase block mb-1">Dimensiones</label>
+                                            <input {...register(`dormitoriosDetalles.${index}.dimensiones` as const)} 
+                                                placeholder="Ej: 4x5m"
+                                                className="w-full bg-white/5 border border-glass-border px-2 py-1.5 rounded text-xs outline-none focus:border-accent-orange" />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                        <div>
-                            <label className="text-xs text-gray-600 mb-1.5 flex items-center gap-1"><Bath size={12} /> Baños</label>
-                            <input type="number" min="0" {...register('banos', { valueAsNumber: true })}
-                                className="w-full bg-white/5 border border-glass-border px-3 py-2.5 rounded-xl focus:outline-none focus:border-accent-orange text-sm" />
+
+                        {/* BAÑOS SECTION */}
+                        <div className="p-4 rounded-xl bg-white/3 border border-glass-border">
+                            <div className="flex items-center justify-between mb-4">
+                                <label className="text-xs font-bold uppercase text-gray-400 flex items-center gap-2">
+                                    <Bath size={16} className="text-accent-orange" /> Baños
+                                </label>
+                                <input type="number" min="0" {...register('banos', { valueAsNumber: true })}
+                                    className="w-20 bg-white/5 border border-glass-border px-3 py-1.5 rounded-lg focus:outline-none focus:border-accent-orange text-sm text-center" />
+                            </div>
+                            
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {bathFields.map((field, index) => (
+                                    <div key={field.id} className="p-2 rounded-lg bg-white/5 border border-glass-border/30">
+                                        <label className="text-[10px] text-gray-500 uppercase block mb-1">Baño #{index + 1}</label>
+                                        <select {...register(`banosDetalles.${index}.tipo` as const)} 
+                                            className="w-full bg-bg-dark border border-glass-border px-2 py-1 round text-xs outline-none">
+                                            <option value="En suite">En suite</option>
+                                            <option value="Compartido">Compartido</option>
+                                            <option value="Visitas">Visitas</option>
+                                            <option value="Servicio">Servicio</option>
+                                        </select>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* PARKING & PATIO SECTION */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="p-4 rounded-xl bg-white/3 border border-glass-border">
+                                <label className="text-xs font-bold uppercase text-gray-400 flex items-center gap-2 mb-4">
+                                    <Car size={16} className="text-accent-orange" /> Parqueos
+                                </label>
+                                <div className="flex flex-col gap-3">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs text-gray-500">Cantidad</span>
+                                        <input type="number" min="0" {...register('parqueos', { valueAsNumber: true })}
+                                            className="w-20 bg-white/5 border border-glass-border px-3 py-1.5 rounded-lg text-sm text-center focus:border-accent-orange outline-none" />
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <label className={`flex-1 flex items-center justify-center py-2 rounded-lg border text-[10px] uppercase font-bold cursor-pointer transition-all ${watch('parqueoTipo') === 'con_techo' ? 'bg-accent-orange/10 border-accent-orange text-accent-orange' : 'border-glass-border text-gray-500'}`}>
+                                            <input type="radio" {...register('parqueoTipo')} value="con_techo" className="hidden" />
+                                            Con Techo
+                                        </label>
+                                        <label className={`flex-1 flex items-center justify-center py-2 rounded-lg border text-[10px] uppercase font-bold cursor-pointer transition-all ${watch('parqueoTipo') === 'aire_libre' ? 'bg-accent-orange/10 border-accent-orange text-accent-orange' : 'border-glass-border text-gray-500'}`}>
+                                            <input type="radio" {...register('parqueoTipo')} value="aire_libre" className="hidden" />
+                                            Al aire libre
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="p-4 rounded-xl bg-white/3 border border-glass-border">
+                                <label className="text-xs font-bold uppercase text-gray-400 flex items-center gap-2 mb-4">
+                                    <Wind size={16} className="text-accent-orange" /> Patios
+                                </label>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs text-gray-500">Cantidad de patios</span>
+                                    <input type="number" min="0" {...register('patios', { valueAsNumber: true })}
+                                        className="w-20 bg-white/5 border border-glass-border px-3 py-1.5 rounded-lg text-sm text-center focus:border-accent-orange outline-none" />
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 mt-3">
+
+                    <div className="grid grid-cols-2 gap-3 mt-6">
                         {[
-                            { field: 'estacionamiento' as const, icon: Car, label: 'Parking' },
-                            { field: 'patio' as const, icon: Wind, label: 'Patio' },
                             { field: 'piscina' as const, icon: Waves, label: 'Piscina' },
                             { field: 'mascotas' as const, icon: Plus, label: 'Mascotas' },
                         ].map(({ field, icon: Icon, label }) => {
                             const val = watch(field as any);
                             return (
                                 <label key={field}
-                                    className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border cursor-pointer transition-all text-xs ${val ? 'border-accent-orange bg-accent-orange/10 text-accent-orange' : 'border-glass-border text-gray-600 hover:border-gray-500'}`}>
+                                    className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all text-sm ${val ? 'border-accent-orange bg-accent-orange/10 text-accent-orange' : 'border-glass-border text-gray-600 hover:border-gray-500'}`}>
                                     <input type="checkbox" {...register(field as any)} className="hidden" />
                                     <Icon size={18} />
                                     {label}

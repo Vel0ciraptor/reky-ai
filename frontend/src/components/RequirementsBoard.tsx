@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Plus, Clock, DollarSign, X,
     CheckCircle2, Loader2,
-    Bed, MapPin, ChevronDown, ChevronUp, Bell, Target, Star
+    Bed, MapPin, ChevronDown, ChevronUp, Bell, Target, Star, List
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import api from '../lib/api';
@@ -294,10 +294,117 @@ function CreateRequirementForm({ onSuccess, onCancel }: { onSuccess: () => void;
     );
 }
 
+function MatchListView({ requirements }: { requirements: Requerimiento[] }) {
+    const allMatches = requirements.flatMap(r => r.matches);
+    const fuerteMatches = allMatches.filter(m => m.scoreMatch >= 80);
+    const sortedMatches = [...fuerteMatches].sort((a, b) => b.scoreMatch - a.scoreMatch);
+
+    if (sortedMatches.length === 0) {
+        return (
+            <div className="text-center py-20 glass-card border-dashed border-glass-border">
+                <Target size={40} className="mx-auto text-gray-700 mb-4 opacity-20" />
+                <p className="text-gray-500">No tienes matches fuertes (al menos 80%) en este momento.</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex flex-col gap-4">
+            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-2 px-1 flex items-center gap-2">
+                <Target size={14} className="text-green-400" /> Matches de Alta Compatibilidad (80%+)
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {sortedMatches.map(m => (
+                    <div key={m.id} className="glass-card p-4 border border-glass-border flex flex-col gap-3 hover:border-green-500/20 transition-all">
+                        <div className="flex justify-between items-start">
+                            <div className="flex items-center gap-3">
+                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-sm font-bold border ${getScoreColor(m.scoreMatch)}`}>
+                                    {m.scoreMatch}%
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-white">{m.captador.nombre}</h4>
+                                    <p className="text-[11px] text-gray-500">{m.captador.tipo} • {m.captador.zonaTrabajo}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-1 text-accent-orange text-xs font-bold bg-accent-orange/10 px-2 py-1 rounded-lg border border-accent-orange/20">
+                                <Star size={12} fill="currentColor" /> {Number(m.captador.rating).toFixed(1)}
+                            </div>
+                        </div>
+                        <div className="mt-2 text-xs text-gray-400 bg-white/5 p-2 rounded-lg border border-glass-border line-clamp-1">
+                            {requirements.find(r => r.id === m.requerimientoId)?.titulo}
+                        </div>
+                        <div className="flex gap-2">
+                            <button className="flex-1 bg-accent-orange text-white py-2 rounded-lg text-xs font-bold hover:bg-accent-light transition-all flex items-center justify-center gap-2">
+                                <Bell size={14} /> Contactar
+                            </button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function SuggestionsView({ requirements }: { requirements: Requerimiento[] }) {
+    const allMatches = requirements.flatMap(r => r.matches);
+    const viableMatches = allMatches.filter(m => m.scoreMatch >= 50 && m.scoreMatch < 80);
+    const sorted = [...viableMatches].sort((a, b) => b.scoreMatch - a.scoreMatch);
+
+    return (
+        <div className="flex flex-col gap-6">
+            <div className="glass-card p-6 border border-glass-border bg-gradient-to-br from-blue-500/5 to-transparent">
+                <div className="flex items-center gap-4 mb-2">
+                    <div className="p-2.5 bg-blue-500/20 rounded-xl text-blue-400">
+                        <Star size={24} />
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-bold text-white">Sugerencias Viables</h2>
+                        <p className="text-gray-500 text-xs">Captadores con puntaje entre 50% y 79% que podrían ser interesantes.</p>
+                    </div>
+                </div>
+            </div>
+
+            {sorted.length > 0 ? (
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {sorted.map(m => (
+                        <div key={m.id} className="glass-card p-4 border border-glass-border flex flex-col gap-3 hover:border-blue-500/20 transition-all">
+                             <div className="flex justify-between items-start">
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-sm font-bold border ${getScoreColor(m.scoreMatch)}`}>
+                                        {m.scoreMatch}%
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-white">{m.captador.nombre}</h4>
+                                        <p className="text-[11px] text-gray-500">{m.captador.tipo}</p>
+                                    </div>
+                                </div>
+                                <div className="text-[10px] text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">
+                                    Viable
+                                </div>
+                            </div>
+                            <div className="mt-1 text-[11px] text-gray-400 italic">
+                                "{m.notas || 'Buen match por ubicación geográfica.'}"
+                            </div>
+                            <button className="w-full bg-white/5 text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 py-2 rounded-lg text-xs font-bold transition-all">
+                                Explorar sugerencia
+                            </button>
+                        </div>
+                    ))}
+                 </div>
+            ) : (
+                <div className="text-center py-20 border border-dashed border-glass-border rounded-2xl">
+                    <p className="text-gray-500 text-sm">No hay sugerencias viables en este rango (50-79%) aún.</p>
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function RequirementsBoard() {
     const [requirements, setRequirements] = useState<Requerimiento[]>([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
+    const [activeTab, setActiveTab] = useState<'requerimientos' | 'matches' | 'sugerencias'>('requerimientos');
 
     const fetchRequirements = async () => {
         setLoading(true);
@@ -315,12 +422,38 @@ export default function RequirementsBoard() {
 
     return (
         <div className="flex flex-col w-full">
-            <div className="flex flex-col sm:flex-row justify-between items-end gap-4 mb-8">
-                <div>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 mb-8">
+                <div className="flex-1">
                     <h1 className="text-3xl font-extrabold text-white mb-2">Muro de Requerimientos</h1>
                     <p className="text-gray-500 text-sm">Gestiona tus necesidades y encuentra captadores automáticamente.</p>
+                    
+                    <div className="flex gap-2 mt-6 p-1 bg-white/5 rounded-xl border border-glass-border w-fit">
+                        {[
+                            { id: 'requerimientos', label: 'Mis Requerimientos', icon: List },
+                            { id: 'matches', label: 'Mis Matches', icon: Target },
+                            { id: 'sugerencias', label: 'Sugerencias', icon: Star }
+                        ].map(tab => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id as any)}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                                    activeTab === tab.id 
+                                    ? 'bg-accent-orange text-white shadow-lg shadow-accent-orange/20' 
+                                    : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
+                                }`}
+                            >
+                                <tab.icon size={14} />
+                                {tab.label}
+                                {tab.id === 'requerimientos' && requirements.length > 0 && (
+                                    <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[9px] ${activeTab === tab.id ? 'bg-white/20' : 'bg-white/10'}`}>
+                                        {requirements.length}
+                                    </span>
+                                )}
+                            </button>
+                        ))}
+                    </div>
                 </div>
-                {!showForm && (
+                {!showForm && activeTab === 'requerimientos' && (
                     <button onClick={() => setShowForm(true)} className="btn-primary py-3 px-6 text-sm flex items-center gap-2 shadow-lg shadow-accent-orange/20">
                         <Plus size={18} /> Nuevo Requerimiento
                     </button>
@@ -338,21 +471,27 @@ export default function RequirementsBoard() {
             {loading ? (
                 <div className="flex flex-col items-center justify-center p-20 gap-4">
                     <Loader2 size={40} className="animate-spin text-accent-orange" />
-                    <p className="text-gray-500 animate-pulse">Analizando matches...</p>
+                    <p className="text-gray-500 animate-pulse">Analizando mercado...</p>
                 </div>
-            ) : requirements.length === 0 ? (
-                <div className="glass-card p-16 text-center flex flex-col items-center border border-dashed border-glass-border">
-                    <Target size={48} className="text-gray-700 mb-6" />
-                    <h3 className="text-lg font-bold text-gray-400 mb-2">No hay requerimientos activos</h3>
-                    <p className="text-gray-600 text-sm max-w-xs mb-8">Comienza publicando lo que tus clientes están buscando para que Reky encuentre los mejores captadores.</p>
-                    <button onClick={() => setShowForm(true)} className="btn-primary py-3 px-8 text-sm flex gap-2 items-center"><Plus size={18} />Publicar mi primer requerimiento</button>
-                </div>
+            ) : activeTab === 'requerimientos' ? (
+                requirements.length === 0 ? (
+                    <div className="glass-card p-16 text-center flex flex-col items-center border border-dashed border-glass-border">
+                        <Target size={48} className="text-gray-700 mb-6" />
+                        <h3 className="text-lg font-bold text-gray-400 mb-2">No tienes requerimientos activos</h3>
+                        <p className="text-gray-600 text-sm max-w-xs mb-8">Publica lo que tus clientes buscan para que Reky encuentre los mejores captadores.</p>
+                        <button onClick={() => setShowForm(true)} className="btn-primary py-3 px-8 text-sm flex gap-2 items-center"><Plus size={18} />Publicar primer requerimiento</button>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 gap-6">
+                        {requirements.map(req => (
+                            <ReqCard key={req.id} req={req} onRefresh={fetchRequirements} />
+                        ))}
+                    </div>
+                )
+            ) : activeTab === 'matches' ? (
+                <MatchListView requirements={requirements} />
             ) : (
-                <div className="grid grid-cols-1 gap-6">
-                    {requirements.map(req => (
-                        <ReqCard key={req.id} req={req} onRefresh={fetchRequirements} />
-                    ))}
-                </div>
+                <SuggestionsView requirements={requirements} />
             )}
         </div>
     );
