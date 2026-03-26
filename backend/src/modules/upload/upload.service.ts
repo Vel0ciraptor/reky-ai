@@ -16,13 +16,21 @@ export class UploadService {
         const key = this.configService.get<string>('SUPABASE_KEY');
 
         if (!url || !key) {
-            console.warn('Supabase credentials not found. Image uploads might fail.');
+            console.error('Error: Supabase credentials (SUPABASE_URL / SUPABASE_KEY) are missing in environment variables. Image uploads will not work.');
+            return;
         }
 
-        this.supabase = createClient(url || '', key || '');
+        try {
+            this.supabase = createClient(url, key);
+        } catch (error) {
+            console.error('Failed to initialize Supabase client:', error);
+        }
     }
 
     async processAndSave(file: Express.Multer.File): Promise<string> {
+        if (!this.supabase) {
+            throw new InternalServerErrorException('El servicio de subida no está configurado (URL de Supabase faltante)');
+        }
         const filename = `${randomUUID()}.webp`;
 
         try {
