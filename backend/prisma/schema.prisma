@@ -222,3 +222,46 @@ model Requirement {
 }
 
 
+model Captador {
+  id          String   @id @default(uuid())
+  nombre      String
+  telefono    String
+  zonaTrabajo String   @map("zona_trabajo")
+  tipo        String   // freelance | agencia
+  rating      Decimal  @default(0)
+  activo      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  matches     Match[]
+}
+
+model Requerimiento {
+  id              String   @id @default(uuid())
+  titulo          String
+  tipoOperacion   String   @map("tipo_operacion") // compra | alquiler
+  tipoPropiedad   String   @map("tipo_propiedad") // casa | departamento | lote
+  presupuestoMin  Decimal  @map("presupuesto_min")
+  presupuestoMax  Decimal  @map("presupuesto_max")
+  zona            String
+  habitaciones    Int
+  descripcion     String
+  estado          String   @default("activo") // activo | cerrado
+  prioridad       String   @default("media")  // alta | media | baja
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  matches         Match[]
+}
+
+model Match {
+  id              String   @id @default(uuid())
+  captadorId      String   @map("captador_id")
+  captador        Captador @relation(fields: [captadorId], references: [id])
+  requerimientoId String   @map("requerimiento_id")
+  requerimiento   Requerimiento @relation(fields: [requerimientoId], references: [id])
+  scoreMatch      Int      @map("score_match") // 0 a 100
+  estado          String   @default("nuevo") // nuevo | contactado | cerrado
+  notas           String?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@unique([captadorId, requerimientoId])
+}

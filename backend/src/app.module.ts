@@ -16,6 +16,7 @@ import { AdminModule } from './modules/admin/admin.module';
 import { DatabaseModule } from './infra/database/database.module';
 import { RequirementsModule } from './modules/requirements/requirements.module';
 import { UploadModule } from './modules/upload/upload.module';
+import { MatchingModule } from './modules/matching/matching.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { UploadModule } from './modules/upload/upload.module';
     AdminModule,
     RequirementsModule,
     UploadModule,
+    MatchingModule,
   ],
   controllers: [AppController],
   providers: [AppService],
