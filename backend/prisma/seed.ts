@@ -47,6 +47,89 @@ async function main() {
         console.log(`   Skipping main admin creation. The database will be initially empty.`);
     }
 
+    // 🚀 NEW: Sample data for the Matching System
+    console.log('🧪 Seeding matching system examples...');
+
+    const c1 = await prisma.captador.create({
+        data: {
+            nombre: 'Juan Pérez',
+            telefono: '+591 70012345',
+            zonaTrabajo: 'Equipetrol',
+            tipo: 'freelance',
+            rating: 4.8,
+            activo: true,
+        }
+    });
+
+    const c2 = await prisma.captador.create({
+        data: {
+            nombre: 'Agencia Real Estate',
+            telefono: '+591 33445566',
+            zonaTrabajo: 'Norte',
+            tipo: 'agencia',
+            rating: 4.5,
+            activo: true,
+        }
+    });
+
+    const r1 = await prisma.requerimiento.create({
+        data: {
+            titulo: 'Busco Depto 2 Hab en Equipetrol',
+            tipoOperacion: 'alquiler',
+            tipoPropiedad: 'departamento',
+            presupuestoMin: 800,
+            presupuestoMax: 1500,
+            zona: 'Equipetrol',
+            habitaciones: 2,
+            descripcion: 'Busco algo moderno cerca de la zona comercial',
+            prioridad: 'alta',
+            estado: 'activo'
+        }
+    });
+
+    const r2 = await prisma.requerimiento.create({
+        data: {
+            titulo: 'Casa Amplia Zona Norte',
+            tipoOperacion: 'compra',
+            tipoPropiedad: 'casa',
+            presupuestoMin: 150000,
+            presupuestoMax: 250000,
+            zona: 'Norte',
+            habitaciones: 3,
+            descripcion: 'Casa para familia pequeña con patio',
+            prioridad: 'media',
+            estado: 'activo'
+        }
+    });
+
+    // Create matches manually for the seed
+    await prisma.match.createMany({
+        data: [
+            {
+                captadorId: c1.id,
+                requerimientoId: r1.id,
+                scoreMatch: 95,
+                estado: 'nuevo',
+                notas: 'Match perfecto por zona y presupuesto'
+            },
+            {
+                captadorId: c2.id,
+                requerimientoId: r2.id,
+                scoreMatch: 85,
+                estado: 'nuevo',
+                notas: 'Buena opción en el norte'
+            },
+            {
+                captadorId: c1.id,
+                requerimientoId: r2.id,
+                scoreMatch: 45,
+                estado: 'nuevo',
+                notas: 'No coincide zona pero presupuesto es similar'
+            }
+        ]
+    });
+
+    console.log('✅ Matching examples seeded successfully!');
     console.log('🚀 Seed complete! Database is ready for production use.');
 }
 
