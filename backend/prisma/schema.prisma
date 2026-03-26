@@ -94,10 +94,15 @@ model Property {
   dormitorios        Int
   banos              Int
   estacionamiento    Boolean         @default(false)
+  parqueos           Int             @default(0)
+  parqueoTipo        String?         @map("parqueo_tipo")
   patio              Boolean         @default(false)
+  patios             Int             @default(0)
   piscina            Boolean         @default(false)
   mascotas           Boolean         @default(false)
   tipoVivienda       String?         @map("tipo_vivienda")
+  dormitoriosDetalles Json?          @map("dormitorios_detalles")
+  banosDetalles      Json?           @map("banos_detalles")
   terreno            Float?
   construccion       Float?
   alquilado          Boolean         @default(false)
