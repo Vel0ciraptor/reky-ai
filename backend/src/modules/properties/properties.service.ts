@@ -173,7 +173,7 @@ export class PropertiesService {
     // Delete related records first
     await this.prisma.propertyImage.deleteMany({ where: { propertyId: id } });
     await this.prisma.propertyTag.deleteMany({ where: { propertyId: id } });
-    await this.prisma.agentProperty.deleteMany({ where: { propertyId: id } });
+    await this.prisma.propertyAgent.deleteMany({ where: { propertyId: id } });
     await this.prisma.transaction.deleteMany({ where: { propertyId: id } });
     return this.prisma.property.delete({ where: { id } });
   }
