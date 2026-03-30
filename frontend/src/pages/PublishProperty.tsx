@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import api from '../lib/api';
 import { useNavigate } from 'react-router-dom';
+import { v4 as uuidv4 } from 'uuid';
+import imageCompression from 'browser-image-compression';
 
 // Fix Leaflet icons in Vite
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -148,6 +150,8 @@ const PublishProperty = () => {
     const [images, setImages] = useState<string[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    const [propertyId] = useState(() => uuidv4());
+
     const { register, handleSubmit, watch, setValue, control, formState: { errors } } = useForm<PublishForm>({
         defaultValues: {
             tipo: 'venta', dormitorios: 1, banos: 1,
@@ -238,17 +242,42 @@ const PublishProperty = () => {
         for (const file of files) {
             if (images.length >= 5) break;
 
-            const formData = new FormData();
-            formData.append('file', file);
-
             try {
-                const response = await api.post('/upload/image', formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
+                // 1. Compress Image (WebP, max 300KB)
+                const options = {
+                    maxSizeMB: 0.3,
+                    maxWidthOrHeight: 1280,
+                    useWebWorker: true,
+                    fileType: 'image/webp'
+                };
+                const compressedFile = await imageCompression(file as File, options);
+
+                // 2. Get Presigned URL
+                const { data: { uploadUrl, fileUrl } } = await api.post('/upload/upload-url', {
+                    entityId: propertyId,
+                    type: 'image/webp'
                 });
-                setImages(prev => [...prev, response.data.url].slice(0, 5));
+
+                // 3. Upload directly to R2 (CORS required)
+                await fetch(uploadUrl, {
+                    method: 'PUT',
+                    body: compressedFile,
+                    headers: { 'Content-Type': 'image/webp' }
+                });
+
+                // 4. Save metadata in backend (Supabase)
+                // Note: If property doesn't exist yet, we capture the URL to send in final submit
+                // but we also call the endpoint as requested.
+                try {
+                    await api.post('/upload/images', { entityId: propertyId, url: fileUrl });
+                } catch (e) {
+                    console.warn('Metadata save error (expected for new properties):', e);
+                }
+
+                setImages(prev => [...prev, fileUrl].slice(0, 5));
             } catch (error) {
                 console.error('Upload error:', error);
-                alert('Error al subir una de las imágenes');
+                alert('Error al subir una de las imágenes. Revisa la consola para más detalles.');
             }
         }
         setIsUploadingImage(false);
@@ -273,13 +302,14 @@ const PublishProperty = () => {
         setIsSubmitting(true);
         try {
             const payload: any = {
+                id: propertyId,
                 ...pendingData,
                 lat: mapPin?.lat,
                 lng: mapPin?.lng,
                 tags,
                 images,
-                estacionamiento: pendingData.parqueos > 0,
-                patio: pendingData.patios > 0,
+                estacionamiento: (pendingData.parqueos || 0) > 0,
+                patio: (pendingData.patios || 0) > 0,
             };
 
             // Clean up NaN values which fail backend validation

@@ -1,38 +1,41 @@
 import {
     Controller,
     Post,
-    UseInterceptors,
-    UploadedFile,
-    BadRequestException,
+    Body,
+    Req,
     UseGuards,
+    BadRequestException,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { memoryStorage } from 'multer';
 import { UploadService } from './upload.service';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 
 @Controller('upload')
+@UseGuards(JwtAuthGuard)
 export class UploadController {
     constructor(private readonly uploadService: UploadService) { }
 
-    @Post('image')
-    @UseGuards(JwtAuthGuard)
-    @UseInterceptors(
-        FileInterceptor('file', {
-            storage: memoryStorage(),
-            limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
-            fileFilter: (_req, file, cb) => {
-                const allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
-                if (!allowedMimes.includes(file.mimetype)) {
-                    return cb(new BadRequestException('Solo se permiten imágenes (jpg, png, webp)'), false);
-                }
-                cb(null, true);
-            },
-        }),
-    )
-    async uploadImage(@UploadedFile() file: Express.Multer.File) {
-        if (!file) throw new BadRequestException('No se recibió ningún archivo');
-        const url = await this.uploadService.processAndSave(file);
-        return { url };
+    @Post('upload-url')
+    async getUploadUrl(@Req() req: any, @Body() body: { entityId: string; type: string }) {
+        if (!body.entityId || !body.type) {
+            throw new BadRequestException('entityId and type are required');
+        }
+
+        const allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+        if (!allowedMimes.includes(body.type)) {
+            throw new BadRequestException('Solo se permiten imágenes (jpg, png, webp)');
+        }
+
+        const userId = req.user.id;
+        return this.uploadService.getPresignedUrl(userId, body.entityId, body.type);
+    }
+
+    @Post('images')
+    async saveMetadata(@Req() req: any, @Body() body: { entityId: string; url: string }) {
+        if (!body.entityId || !body.url) {
+            throw new BadRequestException('entityId and url are required');
+        }
+
+        const userId = req.user.id;
+        return this.uploadService.saveImageMetadata(userId, body.entityId, body.url);
     }
 }

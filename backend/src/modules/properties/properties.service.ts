@@ -16,8 +16,8 @@ export class PropertiesService {
     private walletService: WalletService,
   ) { }
 
-  async create(createPropertyDto: CreatePropertyDto, agentId: string) {
-    const { tags, images, ...data } = createPropertyDto;
+  async create(createPropertyDto: CreatePropertyDto & { id?: string }, agentId: string) {
+    const { tags, images, id, ...data } = createPropertyDto;
 
     // Try to deduct 1 bs first
     await this.walletService.deduct(agentId, 1);
@@ -25,6 +25,7 @@ export class PropertiesService {
       // Create new property with tags and images
       return await this.prisma.property.create({
         data: {
+          id: id,
           ...data,
           agents: {
             create: {

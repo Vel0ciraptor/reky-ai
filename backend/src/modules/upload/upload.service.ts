@@ -1,51 +1,64 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { v2 as cloudinary } from 'cloudinary';
-import type sharp_t from 'sharp';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const sharp: typeof sharp_t = require('sharp');
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { v4 as uuidv4 } from 'uuid';
+import { PrismaService } from '../../infra/database/prisma.service';
 
 @Injectable()
 export class UploadService {
-    constructor(private configService: ConfigService) {
-        cloudinary.config({
-            cloud_name: this.configService.get<string>('CLOUDINARY_CLOUD_NAME'),
-            api_key: this.configService.get<string>('CLOUDINARY_API_KEY'),
-            api_secret: this.configService.get<string>('CLOUDINARY_API_SECRET'),
+    private s3Client: S3Client;
+    private bucketName: string;
+    private publicUrl: string;
+
+    constructor(
+        private configService: ConfigService,
+        private prisma: PrismaService
+    ) {
+        const accountId = this.configService.get('R2_ACCOUNT_ID');
+        const accessKeyId = this.configService.get('R2_ACCESS_KEY_ID');
+        const secretAccessKey = this.configService.get('R2_SECRET_ACCESS_KEY');
+        this.bucketName = this.configService.get('R2_BUCKET_NAME');
+        this.publicUrl = this.configService.get('R2_PUBLIC_URL');
+
+        this.s3Client = new S3Client({
+            region: 'auto',
+            endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+            credentials: {
+                accessKeyId,
+                secretAccessKey,
+            },
         });
     }
 
-    async processAndSave(file: Express.Multer.File): Promise<string> {
+    async getPresignedUrl(userId: string, entityId: string, fileName: string) {
+        // Validation: user_id/entity_id/uuid.webp
+        const extension = 'webp';
+        const uniqueName = `properties/${userId}/${entityId}/${uuidv4()}.${extension}`;
+
+        const command = new PutObjectCommand({
+            Bucket: this.bucketName,
+            Key: uniqueName,
+            ContentType: 'image/webp',
+        });
+
         try {
-            // 1. Optimize image locally with Sharp (Convert to WebP, resize)
-            const webpBuffer = await sharp(file.buffer)
-                .resize({ width: 1200, withoutEnlargement: true })
-                .webp({ quality: 80 })
-                .toBuffer();
-
-            // 2. Upload to Cloudinary using upload_stream
-            return new Promise((resolve, reject) => {
-                const uploadStream = cloudinary.uploader.upload_stream(
-                    {
-                        folder: 'reky-ai/properties',
-                        format: 'webp',
-                        resource_type: 'image'
-                    },
-                    (error, result) => {
-                        if (error || !result) {
-                            console.error('Cloudinary Upload Error:', error);
-                            return reject(new InternalServerErrorException('Error al subir imagen a Cloudinary'));
-                        }
-                        resolve(result.secure_url);
-                    }
-                );
-
-                uploadStream.end(webpBuffer);
-            });
-
+            const uploadUrl = await getSignedUrl(this.s3Client, command, { expiresIn: 3600 });
+            const fileUrl = `${this.publicUrl}/${uniqueName}`;
+            return { uploadUrl, fileUrl };
         } catch (error) {
-            console.error('Process Error:', error);
-            throw new InternalServerErrorException('Error procesando la imagen');
+            console.error('Error generating presigned URL', error);
+            throw new InternalServerErrorException('Error al generar URL de subida');
         }
+    }
+
+    async saveImageMetadata(userId: string, entityId: string, url: string) {
+        return this.prisma.propertyImage.create({
+            data: {
+                propertyId: entityId,
+                url: url,
+                orden: 0
+            }
+        });
     }
 }
