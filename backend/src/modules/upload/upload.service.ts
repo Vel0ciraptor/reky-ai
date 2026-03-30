@@ -1,65 +1,48 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { v2 as cloudinary } from 'cloudinary';
 import type sharp_t from 'sharp';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const sharp: typeof sharp_t = require('sharp');
-import { randomUUID } from 'crypto';
 
 @Injectable()
 export class UploadService {
-    private supabase: SupabaseClient;
-    private readonly bucketName = 'properties';
-
     constructor(private configService: ConfigService) {
-        const url = this.configService.get<string>('SUPABASE_URL');
-        const key = this.configService.get<string>('SUPABASE_KEY');
-
-        if (!url || !key) {
-            console.error('Error: Supabase credentials (SUPABASE_URL / SUPABASE_KEY) are missing in environment variables. Image uploads will not work.');
-            return;
-        }
-
-        try {
-            this.supabase = createClient(url, key);
-        } catch (error) {
-            console.error('Failed to initialize Supabase client:', error);
-        }
+        cloudinary.config({
+            cloud_name: this.configService.get<string>('CLOUDINARY_CLOUD_NAME'),
+            api_key: this.configService.get<string>('CLOUDINARY_API_KEY'),
+            api_secret: this.configService.get<string>('CLOUDINARY_API_SECRET'),
+        });
     }
 
     async processAndSave(file: Express.Multer.File): Promise<string> {
-        if (!this.supabase) {
-            throw new InternalServerErrorException('El servicio de subida no está configurado (URL de Supabase faltante)');
-        }
-        const filename = `${randomUUID()}.webp`;
-
         try {
-            // 1. Optimize image with Sharp (WebP, scale down, format)
+            // 1. Optimize image locally with Sharp (Convert to WebP, resize)
             const webpBuffer = await sharp(file.buffer)
                 .resize({ width: 1200, withoutEnlargement: true })
                 .webp({ quality: 80 })
                 .toBuffer();
 
-            // 2. Upload to Supabase Storage
-            const { data, error } = await this.supabase.storage
-                .from(this.bucketName)
-                .upload(filename, webpBuffer, {
-                    contentType: 'image/webp',
-                    cacheControl: '3600',
-                    upsert: false
-                });
+            // 2. Upload to Cloudinary using upload_stream
+            return new Promise((resolve, reject) => {
+                const uploadStream = cloudinary.uploader.upload_stream(
+                    {
+                        folder: 'reky-ai/properties',
+                        format: 'webp',
+                        resource_type: 'image'
+                    },
+                    (error, result) => {
+                        if (error || !result) {
+                            console.error('Cloudinary Upload Error:', error);
+                            return reject(new InternalServerErrorException('Error al subir imagen a Cloudinary'));
+                        }
+                        resolve(result.secure_url);
+                    }
+                );
 
-            if (error) {
-                console.error('Supabase Upload Error:', error);
-                throw new InternalServerErrorException('Error al subir imagen a Supabase');
-            }
+                uploadStream.end(webpBuffer);
+            });
 
-            // 3. Return the Public URL
-            const { data: { publicUrl } } = this.supabase.storage
-                .from(this.bucketName)
-                .getPublicUrl(data.path);
-
-            return publicUrl;
         } catch (error) {
             console.error('Process Error:', error);
             throw new InternalServerErrorException('Error procesando la imagen');

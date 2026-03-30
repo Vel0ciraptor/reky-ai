@@ -22,8 +22,9 @@ export class UploadController {
             storage: memoryStorage(),
             limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
             fileFilter: (_req, file, cb) => {
-                if (file.mimetype !== 'image/jpeg' && !file.originalname.toLowerCase().endsWith('.jpg')) {
-                    return cb(new BadRequestException('Solo se permiten archivos .jpg'), false);
+                const allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+                if (!allowedMimes.includes(file.mimetype)) {
+                    return cb(new BadRequestException('Solo se permiten imágenes (jpg, png, webp)'), false);
                 }
                 cb(null, true);
             },
