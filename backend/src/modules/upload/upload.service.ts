@@ -15,11 +15,11 @@ export class UploadService {
         private configService: ConfigService,
         private prisma: PrismaService
     ) {
-        const accountId = this.configService.get('R2_ACCOUNT_ID');
-        const accessKeyId = this.configService.get('R2_ACCESS_KEY_ID');
-        const secretAccessKey = this.configService.get('R2_SECRET_ACCESS_KEY');
-        this.bucketName = this.configService.get('R2_BUCKET_NAME');
-        this.publicUrl = this.configService.get('R2_PUBLIC_URL');
+        const accountId = this.configService.get<string>('R2_ACCOUNT_ID') || '';
+        const accessKeyId = this.configService.get<string>('R2_ACCESS_KEY_ID') || '';
+        const secretAccessKey = this.configService.get<string>('R2_SECRET_ACCESS_KEY') || '';
+        this.bucketName = this.configService.get<string>('R2_BUCKET_NAME') || '';
+        this.publicUrl = this.configService.get<string>('R2_PUBLIC_URL') || '';
 
         this.s3Client = new S3Client({
             region: 'auto',
