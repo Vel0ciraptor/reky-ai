@@ -32,7 +32,12 @@ export class UploadService {
     }
 
     async getPresignedUrl(userId: string, entityId: string, fileName: string) {
-        // Validation: user_id/entity_id/uuid.webp
+        if (!this.bucketName) {
+            console.error('CRITICAL: R2_BUCKET_NAME is not defined in environment variables.');
+            throw new InternalServerErrorException('Error de configuración del servidor (Bucket)');
+        }
+
+        // Validation: properties/user_id/entity_id/uuid.webp
         const extension = 'webp';
         const uniqueName = `properties/${userId}/${entityId}/${uuidv4()}.${extension}`;
 
@@ -46,19 +51,29 @@ export class UploadService {
             const uploadUrl = await getSignedUrl(this.s3Client, command, { expiresIn: 3600 });
             const fileUrl = `${this.publicUrl}/${uniqueName}`;
             return { uploadUrl, fileUrl };
-        } catch (error) {
-            console.error('Error generating presigned URL', error);
-            throw new InternalServerErrorException('Error al generar URL de subida');
+        } catch (error: any) {
+            console.error('Error generating presigned URL for R2:', {
+                message: error.message,
+                bucket: this.bucketName,
+                key: uniqueName
+            });
+            throw new InternalServerErrorException('Error al generar URL de subida a Cloudflare');
         }
     }
 
     async saveImageMetadata(userId: string, entityId: string, url: string) {
-        return this.prisma.propertyImage.create({
-            data: {
-                propertyId: entityId,
-                url: url,
-                orden: 0
-            }
-        });
+        try {
+            return await this.prisma.propertyImage.create({
+                data: {
+                    propertyId: entityId,
+                    url: url,
+                    orden: 0
+                }
+            });
+        } catch (error: any) {
+            console.error('Error saving image metadata to Supabase:', error.message);
+            // We allow this to fail if it's a new property, as the final POST will link them.
+            return { warning: 'Metadata could not be saved yet', error: error.message };
+        }
     }
 }
