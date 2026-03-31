@@ -15,7 +15,7 @@ export class UploadController {
     constructor(private readonly uploadService: UploadService) { }
 
     @Post('upload-url')
-    async getUploadUrl(@Req() req: any, @Body() body: { entityId: string; type: string }) {
+    async getUploadUrl(@Req() req: any, @Body() body: { entityId: string; type: string; folder?: string }) {
         if (!body.entityId || !body.type) {
             throw new BadRequestException('entityId and type are required');
         }
@@ -26,7 +26,7 @@ export class UploadController {
         }
 
         const userId = req.user.sub;
-        return this.uploadService.getPresignedUrl(userId, body.entityId, body.type);
+        return this.uploadService.getPresignedUrl(userId, body.entityId, body.type, body.folder || 'properties');
     }
 
     @Post('images')

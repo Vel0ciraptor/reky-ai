@@ -255,7 +255,8 @@ const PublishProperty = () => {
                 // 2. Get Presigned URL
                 const { data: { uploadUrl, fileUrl } } = await api.post('/upload/upload-url', {
                     entityId: propertyId,
-                    type: 'image/webp'
+                    type: 'image/webp',
+                    folder: 'properties'
                 });
 
                 // 3. Upload directly to R2 (CORS required)

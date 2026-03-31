@@ -31,20 +31,19 @@ export class UploadService {
         });
     }
 
-    async getPresignedUrl(userId: string, entityId: string, fileName: string) {
+    async getPresignedUrl(userId: string, entityId: string, type: string, folder: string = 'properties') {
         if (!this.bucketName) {
             console.error('CRITICAL: R2_BUCKET_NAME is not defined in environment variables.');
             throw new InternalServerErrorException('Error de configuración del servidor (Bucket)');
         }
 
-        // Validation: properties/user_id/entity_id/uuid.webp
-        const extension = 'webp';
-        const uniqueName = `properties/${userId}/${entityId}/${uuidv4()}.${extension}`;
+        const extension = type.split('/')[1] || 'webp';
+        const uniqueName = `reky-ai/${folder}/${userId}/${entityId}/${uuidv4()}.${extension}`;
 
         const command = new PutObjectCommand({
             Bucket: this.bucketName,
             Key: uniqueName,
-            ContentType: 'image/webp',
+            ContentType: type,
         });
 
         try {

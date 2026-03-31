@@ -6,6 +6,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, 
 import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../lib/api';
 import AdminProfilePage from './AdminProfilePage';
+import imageCompression from 'browser-image-compression';
 
 // ── Mini bar chart for desktop ──────────────────────────────────
 const MOCK_CHART_DATA = [
@@ -173,44 +174,88 @@ const ProfilePage = () => {
     }, [agent]);
 
     // ── Handlers ─────────────────────────────────────────────────
-    const handleAvatarUpload = (e: any) => {
+    const handleAvatarUpload = async (e: any) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        const reader = new FileReader();
-        reader.onloadend = async () => {
-            const img = new Image();
-            img.onload = async () => {
-                const canvas = document.createElement('canvas');
-                const size = Math.min(img.width, img.height, 300);
-                canvas.width = size; canvas.height = size;
-                const ctx = canvas.getContext('2d')!;
-                const sx = (img.width - size) / 2, sy = (img.height - size) / 2;
-                ctx.drawImage(img, sx, sy, size, size, 0, 0, size, size);
-                const base64 = canvas.toDataURL('image/jpeg', 0.85);
-                setAvatarUrl(base64);
-                try { await api.post('/agents/upload-avatar', { avatarUrl: base64 }); await refreshAgent(); } catch (err) { console.error(err); }
+
+        try {
+            // 1. Compress Avatar (WebP, max 100KB, square)
+            const options = {
+                maxSizeMB: 0.1,
+                maxWidthOrHeight: 400,
+                useWebWorker: true,
+                fileType: 'image/webp'
             };
-            img.src = reader.result as string;
-        };
-        reader.readAsDataURL(file);
+            const compressedFile = await imageCompression(file as File, options);
+
+            // 2. Get Presigned URL
+            const { data: { uploadUrl, fileUrl } } = await api.post('/upload/upload-url', {
+                entityId: 'avatar',
+                type: 'image/webp',
+                folder: 'profiles'
+            });
+
+            // 3. Upload to R2
+            await fetch(uploadUrl, {
+                method: 'PUT',
+                body: compressedFile,
+                headers: { 'Content-Type': 'image/webp' }
+            });
+
+            // 4. Save metadata
+            await api.post('/agents/upload-avatar', { avatarUrl: fileUrl });
+            setAvatarUrl(fileUrl);
+            await refreshAgent();
+        } catch (err) {
+            console.error('Avatar upload error:', err);
+            alert('Error al subir el avatar');
+        }
     };
 
     const handleImageUpload = async (e: any, type: 'front' | 'back') => {
         const file = e.target.files?.[0];
         if (!file) return;
-        const reader = new FileReader();
-        reader.onloadend = async () => {
-            const base64 = reader.result as string;
-            if (type === 'front') setFrontImg(base64); else setBackImg(base64);
-            try {
-                await api.post('/agents/upload-identity', {
-                    frontUrl: type === 'front' ? base64 : frontImg,
-                    backUrl: type === 'back' ? base64 : backImg
-                });
-                await refreshAgent();
-            } catch (err) { console.error(err); }
-        };
-        reader.readAsDataURL(file);
+
+        try {
+            // 1. Compress Identity (WebP, max 400KB)
+            const options = {
+                maxSizeMB: 0.4,
+                maxWidthOrHeight: 1280,
+                useWebWorker: true,
+                fileType: 'image/webp'
+            };
+            const compressedFile = await imageCompression(file as File, options);
+
+            // 2. Get Presigned URL
+            const { data: { uploadUrl, fileUrl } } = await api.post('/upload/upload-url', {
+                entityId: type,
+                type: 'image/webp',
+                folder: 'identity'
+            });
+
+            // 3. Upload to R2
+            await fetch(uploadUrl, {
+                method: 'PUT',
+                body: compressedFile,
+                headers: { 'Content-Type': 'image/webp' }
+            });
+
+            // 4. Save metadata
+            const identityPayload: any = {};
+            if (type === 'front') {
+                identityPayload.frontUrl = fileUrl;
+                setFrontImg(fileUrl);
+            } else {
+                identityPayload.backUrl = fileUrl;
+                setBackImg(fileUrl);
+            }
+
+            await api.post('/agents/upload-identity', identityPayload);
+            await refreshAgent();
+        } catch (err) {
+            console.error('Identity upload error:', err);
+            alert('Error al subir documento de identidad');
+        }
     };
 
 
