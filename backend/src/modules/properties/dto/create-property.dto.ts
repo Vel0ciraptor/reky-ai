@@ -76,4 +76,26 @@ export class CreatePropertyDto {
   @IsOptional()
   @IsString({ each: true })
   images?: string[];
+
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @IsOptional()
+  @IsNumber()
+  parqueos?: number;
+
+  @IsOptional()
+  @IsString()
+  parqueoTipo?: string;
+
+  @IsOptional()
+  @IsNumber()
+  patios?: number;
+
+  @IsOptional()
+  dormitoriosDetalles?: any;
+
+  @IsOptional()
+  banosDetalles?: any;
 }

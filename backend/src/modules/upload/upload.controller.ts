@@ -25,7 +25,7 @@ export class UploadController {
             throw new BadRequestException('Solo se permiten imágenes (jpg, png, webp)');
         }
 
-        const userId = req.user.id;
+        const userId = req.user.sub;
         return this.uploadService.getPresignedUrl(userId, body.entityId, body.type);
     }
 
@@ -35,7 +35,7 @@ export class UploadController {
             throw new BadRequestException('entityId and url are required');
         }
 
-        const userId = req.user.id;
+        const userId = req.user.sub;
         return this.uploadService.saveImageMetadata(userId, body.entityId, body.url);
     }
 }
