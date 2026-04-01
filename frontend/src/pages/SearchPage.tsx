@@ -49,7 +49,7 @@ const createClusterCustomIcon = function (cluster: any) {
 
 const SCZ_CENTER: [number, number] = [-17.7863, -63.1812];
 
-const DrawPolygonTool = ({ isDrawing, points, setPoints, drawnPolygon }: any) => {
+const DrawPolygonTool = ({ isDrawing, points = [], setPoints, drawnPolygon }: any) => {
     const map = useMap();
 
     useEffect(() => {
@@ -919,6 +919,7 @@ export default function SearchPage() {
                 {/* Map — always full size behind */}
                 <MapArea properties={displayProperties} selectProperty={selectProperty}
                     onBoundsReady={handleBoundsReady}
+                    isDrawing={isDrawing} drawingPoints={drawingPoints} setDrawingPoints={setDrawingPoints} drawnPolygon={drawnPolygon}
                     className="absolute inset-0 z-0" />
 
                 {/* Mobile Map Controls */}
