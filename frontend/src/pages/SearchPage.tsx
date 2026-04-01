@@ -1,12 +1,12 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap, Polygon } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import {
     Search, Camera, SlidersHorizontal,
     Bed, Bath, Car, X, ChevronUp, ChevronDown,
-    MapPin, DollarSign, RefreshCw,
+    MapPin, DollarSign, RefreshCw, Hexagon, Loader2, PenTool, Navigation, Check,
     Dog, TreePine, Waves
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
@@ -20,6 +20,18 @@ L.Icon.Default.mergeOptions({
     iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
     shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
+
+function pointInPolygon(point: number[], vs: number[][]) {
+    let x = point[0], y = point[1];
+    let inside = false;
+    for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+        let xi = vs[i][0], yi = vs[i][1];
+        let xj = vs[j][0], yj = vs[j][1];
+        let intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+    }
+    return inside;
+}
 
 const createPropertyIcon = (agentCount: number, promoted: boolean) =>
     L.divIcon({
@@ -35,22 +47,47 @@ const createClusterCustomIcon = function (cluster: any) {
     });
 };
 
-const QUICK_FILTERS = [
-    { name: 'Venta', icon: '🏠', value: 'venta', field: 'tipo' },
-    { name: 'Alquiler', icon: '🔑', value: 'alquiler', field: 'tipo' },
-    { name: 'Anticrético', icon: '🏦', value: 'anticretico', field: 'tipo' },
-    { name: 'Condominio', icon: '🏘️', value: 'casa en condominio', field: 'tipoVivienda' },
-    { name: 'Pet Friendly', icon: '🐾', value: true, field: 'mascotas' },
-    { name: 'Con Piscina', icon: '🏊', value: true, field: 'piscina' },
-    { name: 'Con Parqueo', icon: '🚗', value: true, field: 'estacionamiento' },
-];
-
 const SCZ_CENTER: [number, number] = [-17.7863, -63.1812];
+
+const DrawPolygonTool = ({ isDrawing, points, setPoints, drawnPolygon }: any) => {
+    const map = useMap();
+
+    useEffect(() => {
+        if (isDrawing) {
+            map.doubleClickZoom.disable();
+            map.getContainer().style.cursor = 'crosshair';
+            // Disable dragging map so we can draw easily without accidentally dragging
+            map.dragging.disable();
+            map.scrollWheelZoom.disable();
+        } else {
+            map.doubleClickZoom.enable();
+            map.getContainer().style.cursor = '';
+            map.dragging.enable();
+            map.scrollWheelZoom.enable();
+        }
+    }, [isDrawing, map]);
+
+    useMapEvents({
+        click(e) {
+            if (!isDrawing) return;
+            setPoints((prev: any) => [...prev, [e.latlng.lat, e.latlng.lng]]);
+        }
+    });
+
+    if (drawnPolygon && drawnPolygon.length > 0) {
+       return <Polygon positions={drawnPolygon} pathOptions={{ color: '#FF6A00', fillColor: '#FF6A00', fillOpacity: 0.25, weight: 3 }} />
+    }
+    
+    if (points.length > 0) {
+       return <Polygon positions={points} pathOptions={{ color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.1, weight: 2, dashArray: '4' }} />
+    }
+
+    return null;
+}
 
 const MapController = ({ onBoundsReady }: { onBoundsReady: (b: L.LatLngBounds) => void }) => {
     const map = useMapEvents({
         moveend: (e) => {
-            // Track current view bounds without triggering a search
             (window as any).__mapCurrentBounds = e.target.getBounds();
         },
     });
@@ -397,8 +434,9 @@ type SheetState = 'peek' | 'expanded';
 
 // ── Search Bar Component ────────────────────────────────────────
 const SearchBar = ({
-    inputValue, setInputValue, handleSearch, handleKeyDown, setQ, showFilters, setShowFilters, hasActiveFilters, fileInputRef, handleImageSearch,
-    tipo, setTipo, tipoVivienda, setTipoVivienda, mascotas, setMascotas, piscina, setPiscina, estacionamiento, setEstacionamiento,
+    inputValue, setInputValue,
+    handleSearch, handleKeyDown,
+    fileInputRef, handleImageSearch,
     className = ''
 }: any) => (
     <div className={`flex flex-col gap-2 ${className}`}>
@@ -415,7 +453,7 @@ const SearchBar = ({
 
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                     {inputValue && (
-                        <button onClick={() => { setInputValue(''); setQ(''); }} className="p-1 text-gray-500 hover:text-white">
+                        <button onClick={() => { setInputValue(''); }} className="p-1 text-gray-500 hover:text-white">
                             <X size={13} />
                         </button>
                     )}
@@ -438,53 +476,23 @@ const SearchBar = ({
             >
                 <Camera size={16} />
             </button>
-
-            <button onClick={() => setShowFilters(!showFilters)}
-                className={`w-10 h-10 rounded-xl border flex items-center justify-center flex-shrink-0 relative transition-all ${showFilters ? 'border-accent-orange text-accent-orange' : 'border-glass-border text-gray-400 hover:border-gray-400'}`}>
-                <SlidersHorizontal size={15} />
-                {hasActiveFilters && <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-accent-orange rounded-full" />}
-            </button>
-        </div>
-        {/* Quick Filters pills */}
-        <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide no-scrollbar">
-            {QUICK_FILTERS.map(f => {
-                const isActive = (f.field === 'tipo' && tipo === f.value) ||
-                    (f.field === 'tipoVivienda' && tipoVivienda === f.value) ||
-                    (f.field === 'mascotas' && mascotas === f.value) ||
-                    (f.field === 'piscina' && piscina === f.value) ||
-                    (f.field === 'estacionamiento' && estacionamiento === f.value);
-
-                return (
-                    <button
-                        key={f.name}
-                        onClick={() => {
-                            if (f.field === 'tipo') setTipo(tipo === f.value ? '' : f.value as any);
-                            if (f.field === 'tipoVivienda') setTipoVivienda(tipoVivienda === f.value ? '' : f.value as any);
-                            if (f.field === 'mascotas') setMascotas(!mascotas);
-                            if (f.field === 'piscina') setPiscina(!piscina);
-                            if (f.field === 'estacionamiento') setEstacionamiento(!estacionamiento);
-                        }}
-                        className={`flex-shrink-0 text-[11px] px-3 py-1.5 rounded-full border transition-all flex items-center gap-1.5 ${isActive ? 'border-accent-orange bg-accent-orange/10 text-accent-orange' : 'border-glass-border text-gray-400 hover:border-gray-500 bg-white/5'}`}
-                    >
-                        <span>{f.icon}</span>
-                        <span className="font-medium whitespace-nowrap">{f.name}</span>
-                    </button>
-                );
-            })}
         </div>
     </div>
 );
 
 // ── Map Area Component ──────────────────────────────────────────
 const MapArea = ({
-    properties, selectProperty, onBoundsReady, className = ''
-}: { properties: any[]; selectProperty: (p: any) => void; onBoundsReady: (b: L.LatLngBounds) => void; className?: string }) => (
+    properties, selectProperty, onBoundsReady,
+    isDrawing, drawingPoints, setDrawingPoints, drawnPolygon,
+    className = ''
+}: any) => (
     <div className={`w-full h-full relative ${className}`}>
         <MapContainer center={SCZ_CENTER as L.LatLngExpression} zoom={12}
             style={{ height: '100%', width: '100%', minHeight: '200px' }} zoomControl={true}
             attributionControl={false}>
             <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
             <MapController onBoundsReady={onBoundsReady} />
+            <DrawPolygonTool isDrawing={isDrawing} points={drawingPoints} setPoints={setDrawingPoints} drawnPolygon={drawnPolygon} />
 
             <MarkerClusterGroup
                 chunkedLoading
@@ -514,7 +522,6 @@ export default function SearchPage() {
     const [q, setQ] = useState('');
     const [tipo, setTipo] = useState('');
     const [dormitorios, setDormitorios] = useState('');
-    const [showFilters, setShowFilters] = useState(false);
     const [priceRange, setPriceRange] = useState({ min: 0, max: 0 });
     const [priceMode, setPriceMode] = useState<'range' | 'exact'>('range');
     const [exactPrice, setExactPrice] = useState('');
@@ -535,6 +542,13 @@ export default function SearchPage() {
     const [sheetState, setSheetState] = useState<SheetState>('peek');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // Drawing tool state
+    const [isDrawing, setIsDrawing] = useState(false);
+    const [drawnPolygon, setDrawnPolygon] = useState<number[][] | null>(null);
+    const [drawingPoints, setDrawingPoints] = useState<number[][]>([]);
+
+    const [showSearchModal, setShowSearchModal] = useState(false);
+
     // Map bounds — only used when user clicks "Buscar aquí"
     const [searchBounds, setSearchBounds] = useState<L.LatLngBounds | null>(null);
     const [showList, setShowList] = useState(false);
@@ -553,6 +567,7 @@ export default function SearchPage() {
 
     const handleSearch = () => {
         setQ(inputValue);
+        setShowSearchModal(false); // Hide after search
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -590,7 +605,7 @@ export default function SearchPage() {
         }
 
         return p;
-    }, [q, tipo, dormitorios, priceRange, priceMode, exactPrice, searchBounds]);
+    }, [q, tipo, dormitorios, banos, priceRange, priceMode, exactPrice, mascotas, estacionamiento, patio, piscina, tipoVivienda, terrenoMin, terrenoMax, construccionMin, construccionMax, searchBounds]);
 
     const { data: properties = [], isLoading, isFetching } = useQuery({
         // searchBounds only changes when user clicks "Buscar aquí" — no re-fetch on pan/zoom
@@ -607,8 +622,17 @@ export default function SearchPage() {
         enabled: true,
     });
 
-    // Always show all markers — no hiding on pan/zoom
-    const displayProperties = properties;
+    // Always show all markers, filter logically if polygon drawn
+    const displayProperties = useMemo(() => {
+        if (!drawnPolygon || drawnPolygon.length < 3) return properties;
+        return properties.filter((p: any) => p.lat && p.lng && pointInPolygon([p.lat, p.lng], drawnPolygon));
+    }, [properties, drawnPolygon]);
+
+    const polygonAvgPrice = useMemo(() => {
+        if (!drawnPolygon || drawnPolygon.length < 3 || displayProperties.length === 0) return 0;
+        const total = displayProperties.reduce((acc: number, p: any) => acc + Number(p.precio || 0), 0);
+        return total / displayProperties.length;
+    }, [displayProperties, drawnPolygon]);
 
     const handleImageSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -638,10 +662,59 @@ export default function SearchPage() {
     return (
         <div className="relative" style={{ height: 'calc(100vh - 10rem)' }}>
 
+            {/* ── Search / Filter Modal (Global) ── */}
+            <AnimatePresence>
+                {showSearchModal && (
+                    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                            onClick={() => setShowSearchModal(false)}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="relative bg-bg-dark border border-glass-border rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+                        >
+                            <div className="flex items-center justify-between p-4 border-b border-glass-border">
+                                <h3 className="text-lg font-bold text-white leading-none">Búsqueda y Filtros</h3>
+                                <button onClick={() => setShowSearchModal(false)} className="text-gray-500 hover:text-white transition-colors bg-white/5 p-1.5 rounded-lg">
+                                    <X size={18} />
+                                </button>
+                            </div>
+                            <div className="overflow-y-auto p-4 flex-1">
+                                <SearchBar
+                                    inputValue={inputValue} setInputValue={setInputValue}
+                                    handleSearch={handleSearch} handleKeyDown={handleKeyDown}
+                                    fileInputRef={fileInputRef} handleImageSearch={handleImageSearch}
+                                    className="mb-4"
+                                />
+                                <FiltersPanel
+                                    tipo={tipo} setTipo={setTipo} dormitorios={dormitorios} setDormitorios={setDormitorios} banos={banos} setBanos={setBanos}
+                                    priceRange={priceRange} setPriceRange={setPriceRange} priceMode={priceMode} setPriceMode={setPriceMode}
+                                    exactPrice={exactPrice} setExactPrice={setExactPrice}
+                                    mascotas={mascotas} setMascotas={setMascotas} estacionamiento={estacionamiento} setEstacionamiento={setEstacionamiento} patio={patio} setPatio={setPatio} piscina={piscina} setPiscina={setPiscina}
+                                    tipoVivienda={tipoVivienda} setTipoVivienda={setTipoVivienda} terrenoMin={terrenoMin} setTerrenoMin={setTerrenoMin} terrenoMax={terrenoMax} setTerrenoMax={terrenoMax}
+                                    construccionMin={construccionMin} setConstruccionMin={setConstruccionMin} construccionMax={construccionMax} setConstruccionMax={construccionMax}
+                                    clearFilters={clearFilters} hasActiveFilters={hasActiveFilters}
+                                />
+                            </div>
+                            <div className="p-4 border-t border-glass-border bg-black/20">
+                                <button onClick={() => setShowSearchModal(false)} className="btn-primary w-full py-3.5 flex items-center justify-center gap-2 text-sm font-bold shadow-lg shadow-accent-orange/20">
+                                    <Search size={16} /> Mostrar {displayProperties.length} propiedades
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
             {/* ── DESKTOP (hidden on mobile) ── */}
             <div className="hidden md:flex w-full h-full gap-0">
-
-                {/* Left sidebar panel — collapsible */}
+                {/* Left sidebar panel — minimal */}
                 <AnimatePresence>
                     {showList && (
                         <motion.div
@@ -652,59 +725,30 @@ export default function SearchPage() {
                             className="w-96 flex-shrink-0 flex flex-col border-r border-glass-border overflow-hidden relative z-10"
                             style={{ background: 'rgba(11,11,15,0.98)' }}
                         >
-                            {/* Sidebar header */}
                             <div className="flex-shrink-0 p-4 border-b border-glass-border">
-                                <div className="flex items-center justify-between mb-3">
-                                    <span className="text-sm font-semibold">Propiedades ({displayProperties.length})</span>
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-semibold text-white">Resultados</span>
                                     <button onClick={() => setShowList(false)} className="text-gray-500 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors">
                                         <X size={14} />
                                     </button>
                                 </div>
-                                <SearchBar
-                                    inputValue={inputValue} setInputValue={setInputValue}
-                                    handleSearch={handleSearch} handleKeyDown={handleKeyDown}
-                                    q={q} setQ={setQ} showFilters={showFilters} setShowFilters={setShowFilters}
-                                    hasActiveFilters={hasActiveFilters} fileInputRef={fileInputRef}
-                                    handleImageSearch={handleImageSearch}
-                                    tipo={tipo} setTipo={setTipo} tipoVivienda={tipoVivienda} setTipoVivienda={setTipoVivienda}
-                                    mascotas={mascotas} setMascotas={setMascotas} piscina={piscina} setPiscina={setPiscina}
-                                    estacionamiento={estacionamiento} setSetEstacionamiento={setEstacionamiento}
-                                />
-                                <AnimatePresence>
-                                    {showFilters && (
-                                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
-                                            exit={{ opacity: 0, height: 0 }} className="overflow-hidden mt-3">
-                                            <FiltersPanel
-                                                tipo={tipo} setTipo={setTipo} dormitorios={dormitorios} setDormitorios={setDormitorios} banos={banos} setBanos={setBanos}
-                                                priceRange={priceRange} setPriceRange={setPriceRange} priceMode={priceMode} setPriceMode={setPriceMode}
-                                                exactPrice={exactPrice} setExactPrice={setExactPrice}
-                                                mascotas={mascotas} setMascotas={setMascotas} estacionamiento={estacionamiento} setEstacionamiento={setEstacionamiento} patio={patio} setPatio={setPatio} piscina={piscina} setPiscina={setPiscina}
-                                                tipoVivienda={tipoVivienda} setTipoVivienda={setTipoVivienda} terrenoMin={terrenoMin} setTerrenoMin={setTerrenoMin} terrenoMax={terrenoMax} setTerrenoMax={terrenoMax}
-                                                construccionMin={construccionMin} setConstruccionMin={setConstruccionMin} construccionMax={construccionMax} setConstruccionMax={construccionMax}
-                                                clearFilters={clearFilters} hasActiveFilters={hasActiveFilters} />
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                                <div className="flex items-center justify-between mt-3">
+                                <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                         <MapPin size={12} className="text-accent-orange" />
-                                        <span className="text-xs text-gray-500">
+                                        <span className="text-xs text-gray-400">
                                             {isLoading ? 'Buscando...' : `${displayProperties.length} propiedades`}
                                         </span>
-                                        {tipo && <span className={`text-[10px] px-2 py-0.5 rounded-full border capitalize ${tipoColor[tipo] || ''}`}>{tipo}</span>}
                                     </div>
                                     {isFetching && <LoaderSpinner />}
                                 </div>
                             </div>
-
-                            {/* Sidebar property list */}
                             <div className="flex-1 overflow-y-auto p-3">
                                 {isLoading && !displayProperties.length ? (
                                     <div className="flex items-center justify-center h-32 text-gray-600 text-sm">Cargando zona actual...</div>
                                 ) : displayProperties.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center h-32 text-gray-600 text-sm gap-2">
                                         <Search size={22} className="opacity-30" />
-                                        Sin resultados en esta zona
+                                        Sin resultados
                                     </div>
                                 ) : (
                                     <div className="flex flex-col gap-2.5">
@@ -721,26 +765,94 @@ export default function SearchPage() {
 
                 {/* Right map area */}
                 <div className="flex-1 relative h-full">
-                    <MapArea properties={displayProperties} selectProperty={selectProperty}
+                    <MapArea
+                        properties={displayProperties} selectProperty={selectProperty}
                         onBoundsReady={handleBoundsReady}
-                        className="absolute inset-0 z-0" />
+                        isDrawing={isDrawing} drawingPoints={drawingPoints} setDrawingPoints={setDrawingPoints} drawnPolygon={drawnPolygon}
+                        className="absolute inset-0 z-0"
+                    />
+
+                    {/* Desktop Map Controls */}
+                    <div className="absolute top-4 right-4 z-[500] flex flex-col gap-3">
+                        {/* Search Modal Trigger */}
+                        <button
+                            onClick={() => setShowSearchModal(true)}
+                            className="w-12 h-12 bg-bg-dark/95 border border-glass-border text-gray-300 hover:text-accent-orange hover:border-accent-orange rounded-full flex items-center justify-center shadow-xl transition-all relative"
+                        >
+                            <SlidersHorizontal size={20} />
+                            {hasActiveFilters && <span className="absolute top-3 right-3 w-2 h-2 bg-accent-orange rounded-full" />}
+                        </button>
+
+                        {/* Draw Polygon Trigger */}
+                        <button
+                            onClick={() => {
+                                if (drawnPolygon) {
+                                  setDrawnPolygon(null);
+                                  setDrawingPoints([]);
+                                  setIsDrawing(false);
+                                } else {
+                                  setIsDrawing(!isDrawing);
+                                  setDrawingPoints([]);
+                                }
+                            }}
+                            className={`w-12 h-12 rounded-full flex items-center justify-center shadow-xl transition-all border ${drawnPolygon || isDrawing ? 'bg-accent-orange text-white border-accent-orange' : 'bg-bg-dark/95 border-glass-border text-gray-300 hover:text-accent-orange hover:border-accent-orange'}`}
+                        >
+                            <PenTool size={20} />
+                        </button>
+                    </div>
+
+                    {/* Drawing Overlays */}
+                    <AnimatePresence>
+                        {isDrawing && !drawnPolygon && (
+                            <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -20, opacity: 0 }}
+                                className="absolute top-6 left-1/2 -translate-x-1/2 z-[500] bg-bg-dark/95 border border-accent-orange/50 text-white px-5 py-2.5 rounded-full shadow-2xl flex items-center gap-3"
+                            >
+                                <span className="text-sm font-medium">Haz clics en el mapa para marcar zona</span>
+                                {drawingPoints.length > 2 && (
+                                    <button onClick={() => {
+                                        setDrawnPolygon(drawingPoints);
+                                        setIsDrawing(false);
+                                    }} className="bg-accent-orange text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 hover:scale-105 active:scale-95 transition-all">
+                                        <Check size={14} /> Aplicar
+                                    </button>
+                                )}
+                            </motion.div>
+                        )}
+                        {drawnPolygon && (
+                            <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -20, opacity: 0 }}
+                                className="absolute top-6 left-1/2 -translate-x-1/2 z-[500] bg-bg-dark/95 border border-accent-orange text-white px-5 py-3 rounded-2xl shadow-2xl flex flex-col text-center min-w-[200px]"
+                            >
+                                <span className="text-[10px] text-orange-200 font-bold mb-1 uppercase tracking-widest bg-accent-orange/20 py-0.5 px-2 rounded-full self-center">Zona Personalizada</span>
+                                <span className="text-lg font-bold">{displayProperties.length} Inmuebles</span>
+                                <span className="text-sm text-gray-400 mt-1">Promedio: <span className="text-accent-orange font-bold">${Math.round(polygonAvgPrice).toLocaleString()}</span></span>
+                                <button onClick={() => {
+                                   setDrawnPolygon(null);
+                                   setDrawingPoints([]);
+                                }} className="absolute -top-3 -right-3 bg-gray-600 border border-gray-500 rounded-full p-1.5 hover:text-red-400 text-white shadow-lg transition-colors">
+                                   <X size={12}/>
+                                </button>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
                     {/* "Buscar aquí" — always visible, only fetches on demand */}
-                    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[500]">
-                        <button
-                            onClick={applySearchHere}
-                            className="shadow-xl px-5 py-2.5 rounded-full text-sm font-semibold flex items-center gap-2 transition-all active:scale-95 border bg-bg-dark/90 text-gray-300 border-glass-border hover:border-accent-orange hover:text-accent-orange"
-                        >
-                            <RefreshCw size={14} className={isFetching ? 'animate-spin' : ''} />
-                            Buscar aquí
-                        </button>
+                    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[400] transition-all">
+                        {!isDrawing && !drawnPolygon && (
+                            <button
+                                onClick={applySearchHere}
+                                className="shadow-xl px-5 py-2.5 rounded-full text-sm font-semibold flex items-center gap-2 transition-all active:scale-95 border bg-bg-dark/90 text-gray-300 border-glass-border hover:border-accent-orange hover:text-accent-orange"
+                            >
+                                <RefreshCw size={14} className={isFetching ? 'animate-spin' : ''} />
+                                Buscar aquí
+                            </button>
+                        )}
                     </div>
 
                     {/* Toggle list button */}
                     {!showList && (
                         <button
                             onClick={() => setShowList(true)}
-                            className="absolute top-4 left-4 z-[500] bg-bg-dark/90 border border-glass-border text-gray-300 hover:text-white hover:border-accent-orange px-4 py-2.5 rounded-full text-sm font-semibold flex items-center gap-2 transition-all shadow-xl"
+                            className="absolute top-4 left-4 z-[400] bg-bg-dark/90 border border-glass-border text-gray-300 hover:text-white hover:border-accent-orange px-4 py-2.5 rounded-full text-sm font-semibold flex items-center gap-2 transition-all shadow-xl"
                         >
                             <ChevronUp size={14} />
                             Ver lista ({displayProperties.length})
@@ -809,49 +921,80 @@ export default function SearchPage() {
                     onBoundsReady={handleBoundsReady}
                     className="absolute inset-0 z-0" />
 
-                {/* "Buscar aquí" — always visible on mobile */}
-                <div className="absolute top-[8rem] left-1/2 -translate-x-1/2 z-[400]">
+                {/* Mobile Map Controls */}
+                <div className="absolute top-4 right-4 z-[500] flex flex-col gap-3">
+                    {/* Search Modal Trigger */}
                     <button
-                        onClick={applySearchHere}
-                        className="shadow-xl px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-2 transition-all active:scale-95 border bg-bg-dark/90 text-gray-300 border-glass-border hover:border-accent-orange hover:text-accent-orange"
+                        onClick={() => setShowSearchModal(true)}
+                        className="w-11 h-11 bg-bg-dark/95 border border-glass-border text-gray-300 hover:text-accent-orange hover:border-accent-orange rounded-full flex items-center justify-center shadow-xl transition-all relative"
                     >
-                        <RefreshCw size={12} className={isFetching ? 'animate-spin' : ''} />
-                        Buscar aquí
+                        <SlidersHorizontal size={18} />
+                        {hasActiveFilters && <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-accent-orange rounded-full" />}
+                    </button>
+
+                    {/* Draw Polygon Trigger */}
+                    <button
+                        onClick={() => {
+                            if (drawnPolygon) {
+                              setDrawnPolygon(null);
+                              setDrawingPoints([]);
+                              setIsDrawing(false);
+                            } else {
+                              setIsDrawing(!isDrawing);
+                              setDrawingPoints([]);
+                            }
+                        }}
+                        className={`w-11 h-11 rounded-full flex items-center justify-center shadow-xl transition-all border ${drawnPolygon || isDrawing ? 'bg-accent-orange text-white border-accent-orange' : 'bg-bg-dark/95 border-glass-border text-gray-300 hover:text-accent-orange hover:border-accent-orange'}`}
+                    >
+                        <PenTool size={18} />
                     </button>
                 </div>
 
-                {/* Floating search bar – compact on mobile */}
-                <div className="absolute top-2 left-2 right-2 z-[500]">
-                    <div className="shadow-xl rounded-xl overflow-hidden" style={{ background: 'rgba(14,14,20,0.95)', border: '1px solid rgba(255,255,255,0.09)' }}>
-                        <div className="p-2 relative">
-                            <SearchBar
-                                inputValue={inputValue} setInputValue={setInputValue}
-                                handleSearch={handleSearch} handleKeyDown={handleKeyDown}
-                                q={q} setQ={setQ} showFilters={showFilters} setShowFilters={setShowFilters}
-                                hasActiveFilters={hasActiveFilters} fileInputRef={fileInputRef}
-                                handleImageSearch={handleImageSearch}
-                                tipo={tipo} setTipo={setTipo} tipoVivienda={tipoVivienda} setTipoVivienda={setTipoVivienda}
-                                mascotas={mascotas} setMascotas={setMascotas} piscina={piscina} setPiscina={setPiscina}
-                                estacionamiento={estacionamiento} setEstacionamiento={setEstacionamiento}
-                            />
-                        </div>
-                        <AnimatePresence>
-                            {showFilters && (
-                                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}>
-                                    <div className="px-3 pb-3">
-                                        <FiltersPanel
-                                            tipo={tipo} setTipo={setTipo} dormitorios={dormitorios} setDormitorios={setDormitorios} banos={banos} setBanos={setBanos}
-                                            priceRange={priceRange} setPriceRange={setPriceRange} priceMode={priceMode} setPriceMode={setPriceMode}
-                                            exactPrice={exactPrice} setExactPrice={setExactPrice}
-                                            mascotas={mascotas} setMascotas={setMascotas} estacionamiento={estacionamiento} setEstacionamiento={setEstacionamiento} patio={patio} setPatio={setPatio} piscina={piscina} setPiscina={setPiscina}
-                                            tipoVivienda={tipoVivienda} setTipoVivienda={setTipoVivienda} terrenoMin={terrenoMin} setTerrenoMin={setTerrenoMin} terrenoMax={terrenoMax} setTerrenoMax={terrenoMax}
-                                            construccionMin={construccionMin} setConstruccionMin={setConstruccionMin} construccionMax={construccionMax} setConstruccionMax={construccionMax}
-                                            clearFilters={clearFilters} hasActiveFilters={hasActiveFilters} />
-                                    </div>
-                                </motion.div>
+                {/* Drawing Overlays Mobile */}
+                <AnimatePresence>
+                    {isDrawing && !drawnPolygon && (
+                        <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -20, opacity: 0 }}
+                            className="absolute top-[88px] left-1/2 -translate-x-1/2 w-[90%] z-[500] bg-bg-dark/95 border border-accent-orange/50 text-white px-4 py-2 rounded-full shadow-2xl flex items-center justify-between gap-2"
+                        >
+                            <span className="text-xs font-medium">Marca los puntos del área</span>
+                            {drawingPoints.length > 2 && (
+                                <button onClick={() => {
+                                    setDrawnPolygon(drawingPoints);
+                                    setIsDrawing(false);
+                                }} className="bg-accent-orange text-white text-[10px] uppercase font-bold px-3 py-1.5 rounded-lg flex items-center gap-1">
+                                    <Check size={12} /> Aplicar
+                                </button>
                             )}
-                        </AnimatePresence>
-                    </div>
+                        </motion.div>
+                    )}
+                    {drawnPolygon && (
+                        <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -20, opacity: 0 }}
+                            className="absolute top-6 left-16 right-16 z-[500] bg-bg-dark/95 border border-accent-orange text-white p-3 rounded-2xl shadow-2xl flex flex-col text-center"
+                        >
+                            <span className="text-[10px] text-orange-200 font-bold mb-1 uppercase tracking-widest bg-accent-orange/20 py-0.5 px-2 rounded-full self-center">Zona</span>
+                            <span className="text-sm font-bold">{displayProperties.length} Inmuebles</span>
+                            <span className="text-xs text-gray-400 mt-0.5">Media: <span className="text-accent-orange font-bold">${Math.round(polygonAvgPrice).toLocaleString()}</span></span>
+                            <button onClick={() => {
+                               setDrawnPolygon(null);
+                               setDrawingPoints([]);
+                            }} className="absolute -top-3 -right-3 bg-gray-600 border border-gray-500 rounded-full p-1.5 text-white shadow-lg">
+                               <X size={12}/>
+                            </button>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* "Buscar aquí" — always visible on mobile */}
+                <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[400]">
+                    {!isDrawing && !drawnPolygon && (
+                        <button
+                            onClick={applySearchHere}
+                            className="shadow-xl px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-2 transition-all active:scale-95 border bg-bg-dark/90 text-gray-300 border-glass-border hover:border-accent-orange hover:text-accent-orange"
+                        >
+                            <RefreshCw size={12} className={isFetching ? 'animate-spin' : ''} />
+                            Buscar en zona
+                        </button>
+                    )}
                 </div>
 
                 {/* Selected pin popup (above sheet) */}

@@ -11,6 +11,7 @@ import PropertyDetailPage from './pages/PropertyDetailPage';
 import RequirementsBoard from './components/RequirementsBoard';
 import { Loader2 } from 'lucide-react';
 import VerifyEmailPage from './pages/VerifyEmailPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { agent, loading } = useAuth();
@@ -30,6 +31,7 @@ function App() {
       {/* Public routes */}
       <Route path="/auth" element={<AuthPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/" element={<Navigate to="/search" replace />} />
 
       {/* Protected — agent pages */}

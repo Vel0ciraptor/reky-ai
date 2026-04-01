@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useAuth } from '../context/AuthContext';
@@ -53,6 +53,16 @@ const MapClickHandler = ({ onLocation }: { onLocation: (lat: number, lng: number
             onLocation(lat, lng, address);
         },
     });
+    return null;
+};
+
+const MapUpdater = ({ center }: { center: { lat: number, lng: number } | null }) => {
+    const map = useMap();
+    useEffect(() => {
+        if (center) {
+            map.flyTo([center.lat, center.lng], 16);
+        }
+    }, [center, map]);
     return null;
 };
 
@@ -497,10 +507,30 @@ const PublishProperty = () => {
                         )}
                     </div>
 
-                    <p className="text-xs text-gray-600">Toca el mapa para colocar el pin de la propiedad. Se autocompleta la dirección.</p>
+                    <p className="text-xs text-gray-600 mb-2">Toca el mapa para colocar el pin de la propiedad o ingresa un enlace de Google Maps a continuación. El mapa y la dirección se actualizarán solos.</p>
+
+                    {/* Input Google Maps */}
+                    <div className="relative mb-2">
+                        <MapPin size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-accent-orange" />
+                        <input
+                            type="text"
+                            placeholder="🔗 Pega un enlace de Google Maps o coordenadas (ej: -17.78, -63.18)"
+                            className="w-full bg-white/5 border border-glass-border pl-10 pr-4 py-3 rounded-xl focus:outline-none focus:border-accent-orange transition-all text-sm text-gray-300"
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                const linkMatch = val.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+                                const queryMatch = val.match(/q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+                                const rawMatch = val.match(/^(-?\d+\.\d+)[,\s]+(-?\d+\.\d+)/);
+                                const match = linkMatch || queryMatch || rawMatch;
+                                if (match) {
+                                    handleLocation(parseFloat(match[1]), parseFloat(match[2]), 'Ubicación importada de mapa');
+                                }
+                            }}
+                        />
+                    </div>
 
                     {/* Leaflet map */}
-                    <div className="rounded-xl overflow-hidden border border-glass-border" style={{ height: 220 }}>
+                    <div className="rounded-xl overflow-hidden border border-glass-border shadow-inner" style={{ height: 400 }}>
                         <MapContainer
                             center={SCZ_CENTER as L.LatLngExpression}
                             zoom={13}
@@ -508,9 +538,10 @@ const PublishProperty = () => {
                             zoomControl={true}
                         >
                             <TileLayer
-                                url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                                attribution='&copy; OpenStreetMap contributors &copy; CartoDB'
+                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                attribution='&copy; OpenStreetMap contributors'
                             />
+                            <MapUpdater center={mapPin} />
                             <MapClickHandler onLocation={handleLocation} />
                             {mapPin && (
                                 <Marker

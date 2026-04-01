@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../lib/api';
 
-type Mode = 'login' | 'register';
+type Mode = 'login' | 'register' | 'forgot';
 
 interface LoginForm { email: string; password: string; }
 interface RegisterForm {
@@ -60,6 +60,20 @@ const AuthPage = () => {
             alert(r.data.message || 'Correo reenviado exitosamente');
         } catch (e: any) {
             alert(e.response?.data?.message || 'Error al reenviar correo');
+        } finally {
+            setResending(false);
+        }
+    };
+
+    const handleForgot = async (email: string) => {
+        setResending(true);
+        setError('');
+        try {
+            const r = await api.post('/auth/forgot-password', { email });
+            alert(r.data.message || 'Correo de recuperación enviado');
+            setMode('login');
+        } catch (e: any) {
+            setError(e.response?.data?.message || 'Error al enviar correo');
         } finally {
             setResending(false);
         }
@@ -139,7 +153,7 @@ const AuthPage = () => {
                 )}
 
                 <AnimatePresence mode="wait">
-                    {mode === 'login' ? (
+                    {mode === 'login' && (
                         <motion.form
                             key="login"
                             initial={{ opacity: 0, x: -20 }}
@@ -169,11 +183,18 @@ const AuthPage = () => {
                                     {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                                 </button>
                             </div>
+                            <div className="flex justify-end px-1">
+                                <button type="button" onClick={() => { setMode('forgot'); setError(''); }} className="text-sm text-accent-orange hover:underline">
+                                    ¿Olvidaste tu contraseña?
+                                </button>
+                            </div>
                             <button type="submit" disabled={loginForm.formState.isSubmitting} className="btn-primary mt-2">
                                 {loginForm.formState.isSubmitting ? <Loader2 size={18} className="animate-spin" /> : 'Iniciar Sesión'}
                             </button>
                         </motion.form>
-                    ) : (
+                    )}
+                    
+                    {mode === 'register' && (
                         <motion.form
                             key="register"
                             initial={{ opacity: 0, x: 20 }}
@@ -267,6 +288,44 @@ const AuthPage = () => {
                             </AnimatePresence>
                             <button type="submit" disabled={registerForm.formState.isSubmitting} className="btn-primary mt-2">
                                 {registerForm.formState.isSubmitting ? <Loader2 size={18} className="animate-spin" /> : 'Crear Cuenta'}
+                            </button>
+                        </motion.form>
+                    )}
+
+                    {mode === 'forgot' && (
+                        <motion.form
+                            key="forgot"
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                handleForgot(e.currentTarget.email.value);
+                            }}
+                            className="flex flex-col gap-4"
+                        >
+                            <div className="text-center mb-2">
+                                <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 border border-glass-border">
+                                    <Lock className="text-accent-orange" size={24} />
+                                </div>
+                                <h3 className="text-lg font-semibold text-white">Recuperar Acceso</h3>
+                                <p className="text-gray-400 text-sm mt-2">Ingresa el correo de tu cuenta y te enviaremos un enlace para restablecer tu contraseña.</p>
+                            </div>
+                            <div className="relative">
+                                <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+                                <input
+                                    name="email"
+                                    type="email"
+                                    required
+                                    placeholder="correo@email.com"
+                                    className="w-full bg-white/5 border border-glass-border pl-11 pr-4 py-3.5 rounded-xl focus:outline-none focus:border-accent-orange transition-all placeholder:text-gray-600"
+                                />
+                            </div>
+                            <button type="submit" disabled={resending} className="btn-primary mt-2">
+                                {resending ? <Loader2 size={18} className="animate-spin" /> : 'Enviar Enlace'}
+                            </button>
+                            <button type="button" onClick={() => { setMode('login'); setError(''); }} className="mt-2 text-sm text-gray-400 hover:text-white transition-colors">
+                                Volver al inicio de sesión
                             </button>
                         </motion.form>
                     )}

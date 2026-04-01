@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../infra/database/prisma.service';
-import { RegisterDto, LoginDto } from './dto/auth.dto';
+import { RegisterDto, LoginDto, ForgotPasswordDto, ResetPasswordDto } from './dto/auth.dto';
 import * as bcrypt from 'bcrypt';
 import { Resend } from 'resend';
 import * as crypto from 'crypto';
@@ -143,6 +143,83 @@ export class AuthService {
     });
 
     return { message: 'Cuenta activada exitosamente' };
+  }
+
+  async forgotPassword(dto: ForgotPasswordDto) {
+    const agent = await this.prisma.agent.findUnique({
+      where: { email: dto.email },
+    });
+
+    if (!agent) {
+      // Para seguridad no revelamos si el correo existe o no
+      return { message: 'Si el correo está registrado, se ha enviado un enlace para restablecer la contraseña.' };
+    }
+
+    const code = crypto.randomBytes(32).toString('hex');
+
+    await this.prisma.agent.update({
+      where: { id: agent.id },
+      data: { verificationCode: code },
+    });
+
+    await this.sendPasswordResetEmail(agent.email, agent.name, code);
+
+    return { message: 'Si el correo está registrado, se ha enviado un enlace para restablecer la contraseña.' };
+  }
+
+  private async sendPasswordResetEmail(email: string, name: string, code: string) {
+    if (!this.resend) {
+      console.warn('⚠️ RESEND_API_KEY no configurada. Saltando envío de correo.');
+      return;
+    }
+
+    const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:5173/#'}/reset-password?token=${code}`;
+    try {
+      const { data, error } = await this.resend.emails.send({
+        from: 'Reky AI <onboarding@resend.dev>',
+        to: email,
+        subject: 'Restablecer Contraseña - Reky AI',
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; text-align: center; border-radius: 12px; border: 1px solid #eee; background-color: #FAFAFA;">
+              <h2 style="color: #FF5A1F;">Restablecer tu contraseña</h2>
+              <p style="color: #555; font-size: 16px;">Hola <strong>${name}</strong>, hemos recibido una solicitud para cambiar tu contraseña.</p>
+              <br/>
+              <a href="${resetLink}" style="background-color: #FF5A1F; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Cambiar mi contraseña</a>
+              <br/><br/>
+              <p style="color: #999; font-size: 12px;">Si no solicitaste este cambio, puedes ignorar este correo.</p>
+              <br/>
+              <p style="color: #999; font-size: 12px;">Si el botón no funciona, pega esto en el navegador:<br/>${resetLink}</p>
+          </div>
+        `,
+      });
+
+      if (error) {
+        console.error('❌ Error de Resend:', error);
+      } else {
+        console.log(`✅ Correo enviado con éxito a ${email}. ID:`, data?.id);
+      }
+    } catch (err) {
+      console.error('No se pudo enviar el correo:', err);
+    }
+  }
+
+  async resetPassword(dto: ResetPasswordDto) {
+    if (!dto.token) throw new BadRequestException('Token inválido o faltante.');
+
+    const agent = await this.prisma.agent.findFirst({
+      where: { verificationCode: dto.token }
+    });
+
+    if (!agent) throw new BadRequestException('El enlace de restablecimiento es inválido o ya ha expirado.');
+
+    const hashed = await bcrypt.hash(dto.password, 12);
+
+    await this.prisma.agent.update({
+      where: { id: agent.id },
+      data: { password: hashed, verificationCode: null },
+    });
+
+    return { message: 'Contraseña actualizada exitosamente.' };
   }
 
   async login(dto: LoginDto) {
