@@ -1064,7 +1064,7 @@ export default function SearchPage() {
                                     <div className="flex items-center gap-2">
                                         <MapPin size={12} className="text-accent-orange" />
                                         <span className="text-sm font-semibold">
-                                            {isLoading && !properties.length ? 'Buscando...' : `${properties.length} propiedades`}
+                                            {isLoading && !displayProperties.length ? 'Buscando...' : `${displayProperties.length} propiedades`}
                                         </span>
                                         {tipo && <span className={`text-[10px] px-2 py-0.5 rounded-full border capitalize ${tipoColor[tipo] || ''}`}>{tipo}</span>}
                                         {isFetching && <LoaderSpinner />}
@@ -1078,14 +1078,14 @@ export default function SearchPage() {
                                 </div>
                             </div>
                             <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-2 relative">
-                                {isLoading && !properties.length ? (
+                                {isLoading && !displayProperties.length ? (
                                     <div className="flex items-center justify-center h-16 text-gray-600 text-sm">Cargando...</div>
-                                ) : properties.length === 0 ? (
+                                ) : displayProperties.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center h-20 text-gray-600 text-sm gap-2">
                                         <Search size={20} className="opacity-30" /> Sin resultados
                                     </div>
                                 ) : (
-                                    properties.map((p: any) => (
+                                    displayProperties.map((p: any) => (
                                         <PropertyCard key={p.id} p={p} selected={selected?.id === p.id}
                                             onClick={() => { setSelected(p); setSheetState('peek'); }} layout="sheet" />
                                     ))
@@ -1107,7 +1107,7 @@ export default function SearchPage() {
                             style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}
                         >
                             <MapPin size={14} className="text-accent-orange" />
-                            Ver {properties.length > 0 ? `${properties.length} propiedades` : 'lista'}
+                            Ver {displayProperties.length > 0 ? `${displayProperties.length} propiedades` : 'lista'}
                             <ChevronUp size={14} />
                         </motion.button>
                     )}
