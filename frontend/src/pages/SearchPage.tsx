@@ -6,7 +6,7 @@ import MarkerClusterGroup from 'react-leaflet-cluster';
 import {
     Search, Camera, SlidersHorizontal,
     Bed, Bath, Car, X, ChevronUp, ChevronDown,
-    MapPin, DollarSign, RefreshCw, Hexagon, Loader2, PenTool, Navigation, Check,
+    MapPin, DollarSign, RefreshCw, PenTool, Check,
     Dog, TreePine, Waves
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
