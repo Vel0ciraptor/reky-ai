@@ -612,13 +612,28 @@ export default function SearchPage() {
         queryKey: ['properties', q, tipo, dormitorios, banos, priceRange, priceMode, exactPrice, mascotas, estacionamiento, patio, piscina, tipoVivienda, terrenoMin, terrenoMax, construccionMin, construccionMax, searchBounds?.toBBoxString()],
         queryFn: async ({ pageParam = 1 }) => {
             try {
-                const params = { ...buildParams(), limit: '1000', page: String(pageParam) };
+                const limit = 40;
+                const params = { ...buildParams(), limit: String(limit), page: String(pageParam) };
                 const r = await api.get(`/search?${new URLSearchParams(params)}`);
-                return Array.isArray(r.data) ? { data: r.data, hasMore: false, total: r.data.length } : (r.data ?? { data: [], hasMore: false, total: 0 });
+                
+                // Handle new paginated response or old array format
+                if (r.data && r.data.items) {
+                    return {
+                        data: r.data.items,
+                        hasMore: r.data.hasMore,
+                        total: r.data.total
+                    };
+                }
+                
+                return Array.isArray(r.data) 
+                    ? { data: r.data, hasMore: false, total: r.data.length } 
+                    : { data: [], hasMore: false, total: 0 };
             }
             catch { return { data: [], hasMore: false, total: 0 }; }
         },
-        getNextPageParam: (lastPage: any, allPages: any[]) => lastPage.hasMore ? allPages.length + 1 : undefined,
+        getNextPageParam: (lastPage: any, allPages: any[]) => {
+            return lastPage.hasMore ? allPages.length + 1 : undefined;
+        },
         initialPageParam: 1,
         staleTime: 5 * 60 * 1000,
     });

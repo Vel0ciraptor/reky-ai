@@ -143,7 +143,7 @@ export class SearchService {
     });
 
     return {
-      data: sorted,
+      items: sorted,
       total,
       page,
       limit,

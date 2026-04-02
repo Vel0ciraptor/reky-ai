@@ -121,6 +121,11 @@ model Property {
   images             PropertyImage[]
 
   @@index([lat, lng])
+  @@index([isDemo])
+  @@index([status])
+  @@index([precio])
+  @@index([tipo])
+  @@index([createdAt])
 }
 
 model PropertyImage {

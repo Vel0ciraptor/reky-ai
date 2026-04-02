@@ -74,35 +74,74 @@ export class PropertiesService {
     }
   }
 
-  async findAll() {
-    return this.prisma.property.findMany({
+  async findAll(page: number = 0, limit: number = 0) {
+    const options: any = {
       where: { isDemo: false },
       include: {
+        images: { take: 1 },
         agents: {
           include: {
             agent: {
               select: {
+                id: true,
                 name: true,
                 lastName: true,
                 phone: true,
+                avatarUrl: true,
               },
             },
           },
         },
-        tags: true,
+        tags: { include: { tag: true } },
       },
-    });
+      orderBy: { createdAt: 'desc' },
+    };
+
+    if (page > 0 && limit > 0) {
+      options.skip = (page - 1) * limit;
+      options.take = limit;
+    }
+
+    const [items, total] = await Promise.all([
+      this.prisma.property.findMany(options),
+      this.prisma.property.count({ where: { isDemo: false } }),
+    ]);
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      totalPages: limit > 0 ? Math.ceil(total / limit) : 1,
+    };
   }
 
-  async findAllIncludingDemo() {
-    // Admin-only: returns everything
-    return this.prisma.property.findMany({
+  async findAllIncludingDemo(page: number = 0, limit: number = 0) {
+    const options: any = {
       include: {
         agents: { include: { agent: { select: { name: true, lastName: true } } } },
         images: { orderBy: { orden: 'asc' }, take: 1 },
       },
       orderBy: { createdAt: 'desc' },
-    });
+    };
+
+    if (page > 0 && limit > 0) {
+      options.skip = (page - 1) * limit;
+      options.take = limit;
+    }
+
+    const [items, total] = await Promise.all([
+      this.prisma.property.findMany(options),
+      this.prisma.property.count(),
+    ]);
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      totalPages: limit > 0 ? Math.ceil(total / limit) : 1,
+    };
   }
 
   async toggleDemo(id: string) {
