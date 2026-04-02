@@ -632,10 +632,15 @@ export default function SearchPage() {
         return properties.filter((p: any) => p.lat && p.lng && pointInPolygon([p.lat, p.lng], drawnPolygon));
     }, [properties, drawnPolygon]);
 
-    const polygonAvgPrice = useMemo(() => {
-        if (!drawnPolygon || drawnPolygon.length < 3 || displayProperties.length === 0) return 0;
-        const total = displayProperties.reduce((acc: number, p: any) => acc + Number(p.precio || 0), 0);
-        return total / displayProperties.length;
+    const polygonStats = useMemo(() => {
+        if (!drawnPolygon || drawnPolygon.length < 3 || displayProperties.length === 0) return { avg: 0, min: 0, max: 0 };
+        const prices = displayProperties.map((p: any) => Number(p.precio || 0));
+        const total = prices.reduce((acc, curr) => acc + curr, 0);
+        return {
+            avg: total / displayProperties.length,
+            min: Math.min(...prices),
+            max: Math.max(...prices)
+        };
     }, [displayProperties, drawnPolygon]);
 
     const handleImageSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -837,8 +842,21 @@ export default function SearchPage() {
                                 className="absolute top-6 left-1/2 -translate-x-1/2 z-[500] bg-bg-dark/95 border border-accent-orange text-white px-5 py-3 rounded-2xl shadow-2xl flex flex-col text-center min-w-[200px]"
                             >
                                 <span className="text-[10px] text-orange-200 font-bold mb-1 uppercase tracking-widest bg-accent-orange/20 py-0.5 px-2 rounded-full self-center">Zona Personalizada</span>
-                                <span className="text-lg font-bold">{displayProperties.length} Inmuebles</span>
-                                <span className="text-sm text-gray-400 mt-1">Promedio: <span className="text-accent-orange font-bold">${Math.round(polygonAvgPrice).toLocaleString()}</span></span>
+                                <span className="text-lg font-bold">{displayProperties.length} Inmuebles encontrados</span>
+                                <div className="flex flex-col gap-1 mt-2 px-2">
+                                    <div className="flex justify-between gap-4 text-xs border-b border-white/5 pb-1">
+                                        <span className="text-gray-400">Mínimo:</span>
+                                        <span className="font-bold text-emerald-400">${Math.round(polygonStats.min).toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex justify-between gap-4 text-xs border-b border-white/5 py-1">
+                                        <span className="text-gray-400">Media:</span>
+                                        <span className="font-bold text-accent-orange">${Math.round(polygonStats.avg).toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex justify-between gap-4 text-xs pt-1">
+                                        <span className="text-gray-400">Máximo:</span>
+                                        <span className="font-bold text-rose-400">${Math.round(polygonStats.max).toLocaleString()}</span>
+                                    </div>
+                                </div>
                                 <button onClick={() => {
                                    setDrawnPolygon(null);
                                    setDrawingPoints([]);
@@ -988,7 +1006,20 @@ export default function SearchPage() {
                         >
                             <span className="text-[10px] text-orange-200 font-bold mb-1 uppercase tracking-widest bg-accent-orange/20 py-0.5 px-2 rounded-full self-center">Zona</span>
                             <span className="text-sm font-bold">{displayProperties.length} Inmuebles</span>
-                            <span className="text-xs text-gray-400 mt-0.5">Media: <span className="text-accent-orange font-bold">${Math.round(polygonAvgPrice).toLocaleString()}</span></span>
+                            <div className="grid grid-cols-3 gap-1 mt-2 text-[10px] bg-white/5 p-1.5 rounded-lg border border-white/5">
+                                <div className="flex flex-col">
+                                    <span className="text-gray-500 uppercase text-[8px]">Mín</span>
+                                    <span className="font-bold text-emerald-400">${Math.round(polygonStats.min).toLocaleString()}</span>
+                                </div>
+                                <div className="flex flex-col border-x border-white/10 px-1">
+                                    <span className="text-gray-500 uppercase text-[8px]">Media</span>
+                                    <span className="font-bold text-accent-orange">${Math.round(polygonStats.avg).toLocaleString()}</span>
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-gray-500 uppercase text-[8px]">Máx</span>
+                                    <span className="font-bold text-rose-400">${Math.round(polygonStats.max).toLocaleString()}</span>
+                                </div>
+                            </div>
                             <button onClick={() => {
                                setDrawnPolygon(null);
                                setDrawingPoints([]);
