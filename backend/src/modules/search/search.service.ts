@@ -104,7 +104,7 @@ export class SearchService {
       ];
     }
 
-    const limit = Math.min(Number(filters.limit) || 100, 200);
+    const limit = Math.min(Number(filters.limit) || 1000, 1200);
     const page = Math.max(Number(filters.page) || 1, 1);
     const skip = (page - 1) * limit;
 

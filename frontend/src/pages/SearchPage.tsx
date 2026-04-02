@@ -9,7 +9,7 @@ import {
     MapPin, DollarSign, RefreshCw, PenTool, Check,
     Dog, TreePine, Waves
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
@@ -35,8 +35,8 @@ function pointInPolygon(point: number[], vs: number[][]) {
 
 const createPropertyIcon = (agentCount: number, promoted: boolean) =>
     L.divIcon({
-        html: `<div style="background:${promoted ? '#FF6A00' : '#14141A'};border:2px solid ${promoted ? '#FF8C2A' : 'rgba(255,255,255,0.18)'};border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;color:white;box-shadow:0 4px 14px ${promoted ? 'rgba(255,106,0,0.5)' : 'rgba(0,0,0,0.5)'}">${agentCount}</div>`,
-        className: '', iconSize: [32, 32], iconAnchor: [16, 16],
+        html: `<div style="background:${promoted ? '#FF6A00' : '#FF6A00'};border:2px solid white;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;color:white;box-shadow:0 2px 8px rgba(0,0,0,0.5)">${agentCount}</div>`,
+        className: '', iconSize: [28, 28], iconAnchor: [14, 14],
     });
 
 const createClusterCustomIcon = function (cluster: any) {
@@ -495,6 +495,7 @@ const MapArea = ({
             <DrawPolygonTool isDrawing={isDrawing} points={drawingPoints} setPoints={setDrawingPoints} drawnPolygon={drawnPolygon} />
 
             <MarkerClusterGroup
+                key={`ccg-${properties.length}`}
                 chunkedLoading
                 iconCreateFunction={createClusterCustomIcon}
                 maxClusterRadius={40}
@@ -607,20 +608,23 @@ export default function SearchPage() {
         return p;
     }, [q, tipo, dormitorios, banos, priceRange, priceMode, exactPrice, mascotas, estacionamiento, patio, piscina, tipoVivienda, terrenoMin, terrenoMax, construccionMin, construccionMax, searchBounds]);
 
-    const { data: properties = [], isLoading, isFetching } = useQuery({
-        // searchBounds only changes when user clicks "Buscar aquí" — no re-fetch on pan/zoom
+    const { data: pagesData, isLoading, isFetching, fetchNextPage, hasNextPage } = useInfiniteQuery({
         queryKey: ['properties', q, tipo, dormitorios, banos, priceRange, priceMode, exactPrice, mascotas, estacionamiento, patio, piscina, tipoVivienda, terrenoMin, terrenoMax, construccionMin, construccionMax, searchBounds?.toBBoxString()],
-        queryFn: async () => {
+        queryFn: async ({ pageParam = 1 }) => {
             try {
-                const r = await api.get(`/search?${new URLSearchParams(buildParams())}`);
-                // Backend now returns { data, total, hasMore } — extract the array
-                return Array.isArray(r.data) ? r.data : (r.data?.data ?? []);
+                const params = { ...buildParams(), limit: '1000', page: String(pageParam) };
+                const r = await api.get(`/search?${new URLSearchParams(params)}`);
+                return Array.isArray(r.data) ? { data: r.data, hasMore: false, total: r.data.length } : (r.data ?? { data: [], hasMore: false, total: 0 });
             }
-            catch { return []; }
+            catch { return { data: [], hasMore: false, total: 0 }; }
         },
-        staleTime: 5 * 60 * 1000, // Cache 5 minutes
-        enabled: true,
+        getNextPageParam: (lastPage: any, allPages: any[]) => lastPage.hasMore ? allPages.length + 1 : undefined,
+        initialPageParam: 1,
+        staleTime: 5 * 60 * 1000,
     });
+
+    const properties = useMemo(() => pagesData?.pages.flatMap((p: any) => p.data ?? []) ?? [], [pagesData]);
+
 
     // Always show all markers, filter logically if polygon drawn
     const displayProperties = useMemo(() => {
@@ -751,11 +755,21 @@ export default function SearchPage() {
                                         Sin resultados
                                     </div>
                                 ) : (
-                                    <div className="flex flex-col gap-2.5">
+                                    <div className="flex flex-col gap-2.5 pb-4">
                                         {displayProperties.map((p: any) => (
                                             <PropertyCard key={p.id} p={p} selected={selected?.id === p.id}
                                                 onClick={() => selectProperty(p)} layout="sidebar" />
                                         ))}
+                                        
+                                        {hasNextPage && (
+                                            <button 
+                                                onClick={() => fetchNextPage()}
+                                                disabled={isFetching}
+                                                className="mt-2 w-full py-2.5 rounded-xl border border-glass-border bg-white/5 text-gray-400 text-xs font-semibold hover:border-accent-orange hover:text-white transition-all disabled:opacity-50"
+                                            >
+                                                {isFetching ? 'Cargando más...' : 'Cargar más propiedades'}
+                                            </button>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -1085,10 +1099,22 @@ export default function SearchPage() {
                                         <Search size={20} className="opacity-30" /> Sin resultados
                                     </div>
                                 ) : (
-                                    displayProperties.map((p: any) => (
-                                        <PropertyCard key={p.id} p={p} selected={selected?.id === p.id}
-                                            onClick={() => { setSelected(p); setSheetState('peek'); }} layout="sheet" />
-                                    ))
+                                    <>
+                                        {displayProperties.map((p: any) => (
+                                            <PropertyCard key={p.id} p={p} selected={selected?.id === p.id}
+                                                onClick={() => { setSelected(p); setSheetState('peek'); }} layout="sheet" />
+                                        ))}
+
+                                        {hasNextPage && (
+                                            <button 
+                                                onClick={() => fetchNextPage()}
+                                                disabled={isFetching}
+                                                className="w-full py-3 rounded-xl border border-glass-border bg-white/5 text-gray-400 text-xs font-semibold hover:border-accent-orange hover:text-white transition-all mb-4 disabled:opacity-50"
+                                            >
+                                                {isFetching ? 'Cargando más...' : 'Cargar más propiedades'}
+                                            </button>
+                                        )}
+                                    </>
                                 )}
                             </div>
                         </motion.div>

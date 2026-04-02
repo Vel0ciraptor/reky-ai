@@ -10,7 +10,7 @@ const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter } as any);
 const SQL_FILE_PATH = 'e:\\Oscar Zabala\\Downloads\\remax_bd_completa.sql';
-const LIMIT = 5; // PONER EN 0 PARA PROCESAR TODOS
+const LIMIT = 0; // PONER EN 0 PARA PROCESAR TODOS
 const DELAY_MS = 1000; // Espera 1 segundo entre peticiones para evitar bloqueos
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -34,7 +34,7 @@ async function fetchPropertyData(url: string) {
     const html = await res.text();
     const dataPageMatch = html.match(/data-page="([^"]+)"/);
     if (!dataPageMatch) return null;
-    
+
     // Convertir &quot; de nuevo a comillas dobles y escapar
     const decodedHtml = dataPageMatch[1].replace(/&quot;/g, '"');
     return JSON.parse(decodedHtml);
@@ -59,7 +59,7 @@ async function runTest() {
     if (match) {
       urls.add(match[match.length - 1]);
       if (LIMIT > 0 && urls.size >= LIMIT) {
-          break; 
+        break;
       }
     }
   }
@@ -67,14 +67,25 @@ async function runTest() {
   const urlArray = Array.from(urls);
   console.log(`Se encontraron ${urlArray.length} URLs. Iniciando magia...`);
 
+  let created = 0, skipped = 0, failed = 0;
+
   for (const url of urlArray) {
+    // ── Evitar duplicados: si ya está importada esta URL, saltarla ──
+    const existing = await prisma.property.findFirst({ where: { matricula: url } });
+    if (existing) {
+      skipped++;
+      process.stdout.write(`⏭️  [${created + skipped + failed}/${urlArray.length}] YA EXISTE, saltando...\r`);
+      continue;
+    }
+
     console.log(`\n---------------------------------`);
-    console.log(`🔗 Scrapeando URL: ${url}`);
-    
+    console.log(`🔗 [${created + skipped + failed + 1}/${urlArray.length}] Scrapeando: ${url}`);
+
     const data = await fetchPropertyData(url);
     if (!data || !data.props || !data.props.listing) {
-        console.log(`[SALTANDO] No se pudo extraer información estructurada (Página tal vez inactiva).`);
-        continue;
+      console.log(`[SALTANDO] No se pudo extraer información estructurada (Página tal vez inactiva).`);
+      failed++;
+      continue;
     }
 
     const props = data.props;
@@ -83,40 +94,41 @@ async function runTest() {
     // ----- 1. PREPARACIÓN Y CREACIÓN DEL AGENTE -----
     const rawAgent = listing.agent || (listing.agents && listing.agents.length > 0 ? listing.agents[0] : null) || props.agent || (props.agents && props.agents.length > 0 ? props.agents[0] : null);
     if (!rawAgent || !rawAgent.user) {
-        console.log(`[SALTANDO] No hay información del agente para este inmueble.`);
-        continue;
+      console.log(`[SALTANDO] No hay información del agente para este inmueble.`);
+      failed++;
+      continue;
     }
 
     const user = rawAgent.user;
     const email = user.email || `${user.phone_number}@remax.bo.temp`; // Asegurar que sea único
     let agent = await prisma.agent.findUnique({ where: { email } });
-    
+
     if (!agent) {
-       agent = await prisma.agent.create({
-           data: {
-               name: user.first_name || 'Agente',
-               lastName: user.last_name || 'Remax',
-               email: email,
-               password: '$2b$10$abcdefghijklmnopqrstuv', // Clave encriptada dummy
-               phone: user.phone_number || '',
-               avatarUrl: rawAgent.image_url,
-               role: 'agente',
-               verified: true, // Auto verificar al agente
-               emailVerified: true
-           }
-       });
-       console.log(`🧑‍💼 Agente Nuevo: ${agent.name} ${agent.lastName} Creado existosamente.`);
+      agent = await prisma.agent.create({
+        data: {
+          name: user.first_name || 'Agente',
+          lastName: user.last_name || 'Remax',
+          email: email,
+          password: '$2b$10$abcdefghijklmnopqrstuv', // Clave encriptada dummy
+          phone: user.phone_number || '',
+          avatarUrl: rawAgent.image_url,
+          role: 'agente',
+          verified: true, // Auto verificar al agente
+          emailVerified: true
+        }
+      });
+      console.log(`🧑‍💼 Agente Nuevo: ${agent.name} ${agent.lastName} Creado existosamente.`);
     } else {
-       console.log(`🧑‍💼 Agente Ya Existe: ${agent.name} ${agent.lastName}`);
+      console.log(`🧑‍💼 Agente Ya Existe: ${agent.name} ${agent.lastName}`);
     }
 
     // ----- 2. PREPARACIÓN Y CREACIÓN DE PROPIEDAD -----
     const ubicacionInfo = listing.location || {};
     let ubicacionStr = 'Santa Cruz';
     if (ubicacionInfo.zone && ubicacionInfo.city) {
-        ubicacionStr = `${ubicacionInfo.zone.name}, ${ubicacionInfo.city.name}`;
+      ubicacionStr = `${ubicacionInfo.zone.name}, ${ubicacionInfo.city.name}`;
     } else if (ubicacionInfo.zone) {
-        ubicacionStr = ubicacionInfo.zone.name;
+      ubicacionStr = ubicacionInfo.zone.name;
     }
 
     // Precio en USD normalmente
@@ -130,53 +142,58 @@ async function runTest() {
     const fullDesc = `**${listing.title || 'Inmueble'}**\n\n${listing.description_website || 'Sin descripción detallada.'}`;
 
     const property = await prisma.property.create({
-        data: {
-            descripcion: fullDesc, // Insertamos el titulo y desc combinado ya que no hay 'titulo' individual en la base bd
-            ubicacion: ubicacionStr,
-            tipo: mapPropertyType(tType),
-            precio: price,
-            dormitorios: info.number_bedrooms || 0,
-            banos: info.number_bathrooms || 0,
-            tipoVivienda: info.subtype_property?.name || 'Inmueble',
-            lat: parseFloat(ubicacionInfo.latitude) || null,
-            lng: parseFloat(ubicacionInfo.longitude) || null,
-            isDemo: false,
-        }
+      data: {
+        descripcion: fullDesc, // Insertamos el titulo y desc combinado ya que no hay 'titulo' individual en la base bd
+        ubicacion: ubicacionStr,
+        tipo: mapPropertyType(tType),
+        precio: price,
+        dormitorios: info.number_bedrooms || 0,
+        banos: info.number_bathrooms || 0,
+        tipoVivienda: info.subtype_property?.name || 'Inmueble',
+        lat: parseFloat(ubicacionInfo.latitude) || null,
+        lng: parseFloat(ubicacionInfo.longitude) || null,
+        isDemo: false,
+        matricula: url,
+      }
     });
 
     // ----- 3. GUARDADO DE IMÁGENES -----
     const multimedias = listing.multimedias || [];
     let numFotos = 0;
     for (let i = 0; i < multimedias.length; i++) {
-        if (multimedias[i].link) {
-            await prisma.propertyImage.create({
-                data: {
-                    propertyId: property.id,
-                    url: multimedias[i].link,
-                    orden: i
-                }
-            });
-            numFotos++;
-        }
+      if (multimedias[i].link) {
+        await prisma.propertyImage.create({
+          data: {
+            propertyId: property.id,
+            url: multimedias[i].link,
+            orden: i
+          }
+        });
+        numFotos++;
+      }
     }
 
     // ----- 4. ENLACE ENTRE AGENTE Y PROPIEDAD -----
     await prisma.propertyAgent.create({
-        data: {
-            propertyId: property.id,
-            agentId: agent.id,
-            enCoventa: false,
-            promocionado: false 
-        }
+      data: {
+        propertyId: property.id,
+        agentId: agent.id,
+        enCoventa: false,
+        promocionado: false
+      }
     });
-    
+
     console.log(`🏡 Propiedad Creada: ${ubicacionStr} ($${price})`);
     console.log(`📸 Fotos guardadas: ${numFotos}`);
-    
+    created++;
+
     await sleep(DELAY_MS);
   }
 
-  console.log(`\n✅ MIGRACIÓN FINALIZADA (${urlArray.length} completados).`);
+  console.log(`\n✅ MIGRACIÓN FINALIZADA`);
+  console.log(`   ✔ Creadas:  ${created}`);
+  console.log(`   ⏭ Saltadas: ${skipped} (ya existían)`);
+  console.log(`   ✖ Fallidas: ${failed}`);
 }
 
 runTest().catch(console.error).finally(() => prisma.$disconnect());
