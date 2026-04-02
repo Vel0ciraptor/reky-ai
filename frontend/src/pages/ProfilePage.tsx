@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Home, CheckCircle, Wallet, Trophy, TrendingUp, FileText, Settings, LogOut, X, Upload, Save, Check, Camera, BarChart3, Clock, DollarSign, Edit3, Loader2, Users, UserPlus, Building2, Trash2, Sun, Moon, ExternalLink } from 'lucide-react';
+import { Star, Home, CheckCircle, Wallet, Trophy, TrendingUp, FileText, Settings, LogOut, X, Upload, Save, Check, Camera, BarChart3, Clock, DollarSign, Edit3, Loader2, Users, UserPlus, Building2, Trash2, Sun, Moon, ExternalLink, MapPin } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../lib/api';
@@ -19,6 +19,9 @@ interface MyProperty {
     matricula: string;
     descripcion: string;
     ubicacion: string;
+    lat: number | null;
+    lng: number | null;
+    status: string;
     tipo: 'venta' | 'alquiler' | 'anticretico';
     precio: number;
     alquilado: boolean;
@@ -84,8 +87,9 @@ const ProfilePage = () => {
     // Properties edit state
     const [editingPropId, setEditingPropId] = useState<string | null>(null);
     const [editPrice, setEditPrice] = useState('');
-    const [editAlquilado, setEditAlquilado] = useState(false);
     const [editTiempo, setEditTiempo] = useState('');
+    const [editStatus, setEditStatus] = useState('disponible');
+    const [editUbicacion, setEditUbicacion] = useState('');
     const [saving, setSaving] = useState(false);
 
     // Profile edit state
@@ -325,17 +329,22 @@ const ProfilePage = () => {
     const startEdit = (p: MyProperty) => {
         setEditingPropId(p.id);
         setEditPrice(String(p.precio));
-        setEditAlquilado(p.alquilado);
         setEditTiempo(String(p.tiempoAlquiler || p.tiempoAnticretico || ''));
+        setEditStatus(p.status || 'disponible');
+        setEditUbicacion(p.ubicacion || '');
     };
 
     const handleSaveProperty = async (p: MyProperty) => {
         setSaving(true);
         try {
-            const payload: any = { precio: Number(editPrice) };
+            const payload: any = { 
+                precio: Number(editPrice),
+                status: editStatus,
+                ubicacion: editUbicacion
+            };
             if (p.tipo === 'alquiler') {
-                payload.alquilado = editAlquilado;
-                payload.tiempoAlquiler = editAlquilado ? Number(editTiempo) || null : null;
+                payload.alquilado = editStatus === 'alquilado';
+                payload.tiempoAlquiler = (editStatus === 'alquilado') ? Number(editTiempo) || null : null;
             }
             if (p.tipo === 'anticretico') {
                 payload.tiempoAnticretico = Number(editTiempo) || null;
@@ -947,13 +956,15 @@ const ProfilePage = () => {
                                                             >
                                                                 <ExternalLink size={14} />
                                                             </button>
-                                                            <button
-                                                                onClick={() => handleDeleteProperty(p.id)}
-                                                                className="p-2 rounded-lg text-xs transition-all flex-shrink-0 bg-red-500/10 text-red-400 hover:bg-red-500/20"
-                                                                title="Eliminar propiedad"
-                                                            >
-                                                                <Trash2 size={14} />
-                                                            </button>
+                                                            {agent?.role === 'admin' && (
+                                                                <button
+                                                                    onClick={() => handleDeleteProperty(p.id)}
+                                                                    className="p-2 rounded-lg text-xs transition-all flex-shrink-0 bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                                                                    title="Eliminar propiedad"
+                                                                >
+                                                                    <Trash2 size={14} />
+                                                                </button>
+                                                            )}
                                                         </div>
 
                                                         <AnimatePresence>
@@ -962,29 +973,35 @@ const ProfilePage = () => {
                                                                     className="border-t border-glass-border overflow-hidden">
                                                                     <div className="p-3 space-y-3 bg-white/[0.02]">
                                                                         <div>
+                                                                            <label className="text-[10px] text-gray-400 mb-1 block flex items-center gap-1"><MapPin size={10} /> Ubicación / Dirección</label>
+                                                                            <input type="text" value={editUbicacion} onChange={e => setEditUbicacion(e.target.value)}
+                                                                                className="w-full bg-white/5 border border-glass-border px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-accent-orange" />
+                                                                        </div>
+                                                                        <div>
                                                                             <label className="text-[10px] text-gray-400 mb-1 block flex items-center gap-1"><DollarSign size={10} /> Precio ({p.tipo === 'alquiler' ? 'mensual' : p.tipo === 'anticretico' ? 'total' : 'USD'})</label>
                                                                             <input type="number" value={editPrice} onChange={e => setEditPrice(e.target.value)}
                                                                                 className="w-full bg-white/5 border border-glass-border px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-accent-orange" />
                                                                         </div>
-                                                                        {p.tipo === 'alquiler' && (
-                                                                            <>
-                                                                                <div className="flex items-center justify-between">
-                                                                                    <label className="text-[10px] text-gray-400 flex items-center gap-1"><Home size={10} /> ¿Ya está alquilado?</label>
-                                                                                    <button onClick={() => setEditAlquilado(!editAlquilado)}
-                                                                                        className={`w-10 h-5 rounded-full transition-colors relative ${editAlquilado ? 'bg-accent-orange' : 'bg-white/10'}`}>
-                                                                                        <div className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-all ${editAlquilado ? 'left-5' : 'left-0.5'}`} />
-                                                                                    </button>
-                                                                                </div>
-                                                                                {editAlquilado && (
-                                                                                    <div>
-                                                                                        <label className="text-[10px] text-gray-400 mb-1 block flex items-center gap-1"><Clock size={10} /> Tiempo de alquiler (meses)</label>
-                                                                                        <input type="number" value={editTiempo} onChange={e => setEditTiempo(e.target.value)} placeholder="12"
-                                                                                            className="w-full bg-white/5 border border-glass-border px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-accent-orange" />
-                                                                                    </div>
-                                                                                )}
-                                                                            </>
+                                                                        
+                                                                        <div>
+                                                                            <label className="text-[10px] text-gray-400 mb-1 block">Estado de la propiedad</label>
+                                                                            <select value={editStatus} onChange={e => setEditStatus(e.target.value)}
+                                                                                className="w-full bg-bg-dark border border-glass-border px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-accent-orange text-white">
+                                                                                <option value="disponible">Disponible</option>
+                                                                                <option value="vendido">Vendido</option>
+                                                                                <option value="alquilado">Alquilado</option>
+                                                                                <option value="anticretado">Anticretado</option>
+                                                                            </select>
+                                                                        </div>
+
+                                                                        {editStatus === 'alquilado' && (
+                                                                            <div>
+                                                                                <label className="text-[10px] text-gray-400 mb-1 block flex items-center gap-1"><Clock size={10} /> Tiempo de contrato (meses)</label>
+                                                                                <input type="number" value={editTiempo} onChange={e => setEditTiempo(e.target.value)} placeholder="12"
+                                                                                    className="w-full bg-white/5 border border-glass-border px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-accent-orange" />
+                                                                            </div>
                                                                         )}
-                                                                        {p.tipo === 'anticretico' && (
+                                                                        {editStatus === 'anticretado' && (
                                                                             <div>
                                                                                 <label className="text-[10px] text-gray-400 mb-1 block flex items-center gap-1"><Clock size={10} /> Duración anticrético (años)</label>
                                                                                 <input type="number" value={editTiempo} onChange={e => setEditTiempo(e.target.value)} placeholder="3"

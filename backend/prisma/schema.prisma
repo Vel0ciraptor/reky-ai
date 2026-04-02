@@ -112,6 +112,7 @@ model Property {
   lng                Float?
   matricula          String?         
   isDemo             Boolean         @default(false) @map("is_demo")
+  status             String          @default("disponible")
   createdAt          DateTime        @default(now()) @map("created_at")
   
   agents             PropertyAgent[]

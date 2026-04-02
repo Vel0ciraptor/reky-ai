@@ -48,7 +48,7 @@ export class AuthService {
 
     // Create wallet for new agent with 365bs default balance
     await this.prisma.wallet.create({
-      data: { agentId: agent.id, balance: 365 },
+      data: { agentId: agent.id, balance: 200 },
     });
 
     if (dto.agencyId && dto.role !== 'agencia') {

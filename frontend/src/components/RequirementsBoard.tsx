@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Plus, Clock, DollarSign, X,
@@ -294,7 +295,7 @@ function CreateRequirementForm({ onSuccess, onCancel }: { onSuccess: () => void;
     );
 }
 
-function MatchListView({ requirements }: { requirements: Requerimiento[] }) {
+function MatchListView({ requirements, onContact }: { requirements: Requerimiento[]; onContact: (agentId: string) => void }) {
     const allMatches = requirements.flatMap(r => r.matches);
     const fuerteMatches = allMatches.filter(m => m.scoreMatch >= 80);
     const sortedMatches = [...fuerteMatches].sort((a, b) => b.scoreMatch - a.scoreMatch);
@@ -334,10 +335,13 @@ function MatchListView({ requirements }: { requirements: Requerimiento[] }) {
                             {requirements.find(r => r.id === m.requerimientoId)?.titulo}
                         </div>
                         <div className="flex gap-2">
-                            <button className="flex-1 bg-accent-orange text-white py-2 rounded-lg text-xs font-bold hover:bg-accent-light transition-all flex items-center justify-center gap-2">
-                                <Bell size={14} /> Contactar
-                            </button>
-                        </div>
+                             <button 
+                                onClick={() => onContact(m.captador.id)}
+                                className="flex-1 bg-accent-orange text-white py-2 rounded-lg text-xs font-bold hover:bg-accent-light transition-all flex items-center justify-center gap-2"
+                             >
+                                 <Bell size={14} /> Contactar
+                             </button>
+                         </div>
                     </div>
                 ))}
             </div>
@@ -401,6 +405,7 @@ function SuggestionsView({ requirements }: { requirements: Requerimiento[] }) {
 }
 
 export default function RequirementsBoard() {
+    const navigate = useNavigate();
     const [requirements, setRequirements] = useState<Requerimiento[]>([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
@@ -489,7 +494,7 @@ export default function RequirementsBoard() {
                     </div>
                 )
             ) : activeTab === 'matches' ? (
-                <MatchListView requirements={requirements} />
+                <MatchListView requirements={requirements} onContact={(id) => navigate(`/chat?agent=${id}`)} />
             ) : (
                 <SuggestionsView requirements={requirements} />
             )}

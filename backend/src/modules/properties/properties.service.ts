@@ -142,6 +142,10 @@ export class PropertiesService {
       alquilado?: boolean;
       tiempoAlquiler?: number | null;
       tiempoAnticretico?: number | null;
+      ubicacion?: string;
+      lat?: number;
+      lng?: number;
+      status?: string;
     },
   ) {
     const property = await this.prisma.property.findUnique({ where: { id } });
@@ -158,6 +162,10 @@ export class PropertiesService {
         ...(data.tiempoAnticretico !== undefined && {
           tiempoAnticretico: data.tiempoAnticretico,
         }),
+        ...(data.ubicacion !== undefined && { ubicacion: data.ubicacion }),
+        ...(data.lat !== undefined && { lat: data.lat }),
+        ...(data.lng !== undefined && { lng: data.lng }),
+        ...(data.status !== undefined && { status: data.status }),
       },
     });
   }

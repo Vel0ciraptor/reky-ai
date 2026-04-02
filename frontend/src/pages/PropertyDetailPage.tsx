@@ -344,6 +344,11 @@ export default function PropertyDetailPage() {
                     <span className="px-3 py-1 bg-white/10 backdrop-blur-md text-white border border-white/20 text-xs rounded-full font-mono uppercase tracking-widest">
                         {property.matricula}
                     </span>
+                    {property.status && property.status !== 'disponible' && (
+                        <span className="px-3 py-1 bg-red-600 text-white text-xs font-bold rounded-full uppercase tracking-widest animate-pulse border border-red-400">
+                           {property.status}
+                        </span>
+                    )}
                 </div>
             </div>
 
