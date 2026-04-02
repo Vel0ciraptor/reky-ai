@@ -5,7 +5,7 @@ import {
     Shield, Users, Home, TrendingUp, Building2, Clock, CheckCircle,
     ChevronLeft, ChevronRight, LogOut, Camera, Loader2,
     BarChart3, PieChart as PieChartIcon, CalendarDays, Check,
-    AlertTriangle, Award, DollarSign, Activity, Download,
+    AlertTriangle, Award, DollarSign, Activity, Download, Wallet,
 } from 'lucide-react';
 import {
     AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -38,6 +38,19 @@ interface AdminMetrics {
     weeklyChart: ChartPoint[];
     monthlyChart: ChartPoint[];
     propertyDistribution: { venta: number; alquiler: number; anticretico: number };
+    resourceUsage?: {
+        totalImages: number;
+        totalMessages: number;
+        totalRequirements: number;
+        estimatedR2UsageMB: number;
+        supabaseRowsEst: number;
+    };
+    businessMetrics?: {
+        totalCoVenta: number;
+        totalWalletBalance: number;
+        avgDaysToClose: number;
+        conversionRate: number;
+    };
 }
 
 const CHART_COLORS = {
@@ -70,13 +83,13 @@ const AdminProfilePage = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [verifyingId, setVerifyingId] = useState<string | null>(null);
     const [togglingDemoId, setTogglingDemoId] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<'overview' | 'sales' | 'properties' | 'agents'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'sales' | 'properties' | 'agents' | 'resources'>('overview');
 
     // Charts carousel
     const [chartSlide, setChartSlide] = useState(0);
     type ChartPeriod = 'daily' | 'weekly' | 'monthly';
     const [chartPeriod, setChartPeriod] = useState<ChartPeriod>('monthly');
-    const totalSlides = 3;
+    const totalSlides = 4;
 
     // Avatar
     const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -305,6 +318,7 @@ const AdminProfilePage = () => {
                                 { icon: BarChart3, label: 'Ventas por período' },
                                 { icon: Activity, label: chartSlide === 1 ? `Actividad · ${periodLabels[chartPeriod]}` : 'Actividad' },
                                 { icon: PieChartIcon, label: 'Distribución' },
+                                { icon: Camera, label: 'Carga de Imágenes' },
                             ];
                             const s = slides[chartSlide];
                             return (
@@ -433,6 +447,19 @@ const AdminProfilePage = () => {
                                 </div>
                             </motion.div>
                         )}
+                        {/* Slide 3: Images Upload (Area Chart) */}
+                        {chartSlide === 3 && (
+                            <motion.div key="images" initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}
+                                transition={{ duration: 0.3 }} className="absolute inset-0 px-4 sm:px-5 pb-4">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={metrics?.monthlyChart || []}>
+                                        <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.2)' }} axisLine={false} tickLine={false} />
+                                        <Tooltip contentStyle={{ backgroundColor: 'rgba(14,14,20,0.97)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, fontSize: 11 }} />
+                                        <Area type="monotone" dataKey="imagenes" name="Imágenes" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.1} strokeWidth={2} />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </motion.div>
+                        )}
                     </AnimatePresence>
                 </div>
 
@@ -460,6 +487,7 @@ const AdminProfilePage = () => {
                         ['sales', `Ventas${(metrics?.pendingVerifications ?? 0) > 0 ? ` · ${metrics!.pendingVerifications}` : ''}`, DollarSign],
                         ['properties', 'Propiedades', Home],
                         ['agents', 'Agentes', Award],
+                        ['resources', 'Recursos', Activity],
                     ] as const).map(([k, label, Icon]) => (
                         <button key={k} onClick={() => setActiveTab(k)}
                             className={`flex items-center gap-1.5 px-4 sm:px-5 py-3 text-[10px] sm:text-xs font-medium tracking-wide uppercase whitespace-nowrap transition-all border-b-2 -mb-px ${activeTab === k ? 'border-accent-orange/70 text-white/90' : 'border-transparent text-white/25 hover:text-white/40'}`}>
@@ -495,6 +523,53 @@ const AdminProfilePage = () => {
                                         </div>
                                     </motion.div>
                                 ))}
+                            </div>
+
+                            {/* Business Health Row (State of the Art KPIs) */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                <div className="p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/10 flex flex-col justify-between">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <TrendingUp size={14} className="text-emerald-400" />
+                                        <span className="text-[10px] text-emerald-400/60 uppercase tracking-widest font-bold">Tasa de Conversión</span>
+                                    </div>
+                                    <div className="flex items-baseline gap-2">
+                                        <p className="text-2xl font-black text-white">{metrics?.businessMetrics?.conversionRate}%</p>
+                                        <p className="text-[9px] text-white/20">de listings cerrados</p>
+                                    </div>
+                                </div>
+
+                                <div className="p-4 rounded-2xl bg-blue-500/5 border border-blue-500/10 flex flex-col justify-between">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <Clock size={14} className="text-blue-400" />
+                                        <span className="text-[10px] text-blue-400/60 uppercase tracking-widest font-bold">Tiempo Cierre</span>
+                                    </div>
+                                    <div className="flex items-baseline gap-2">
+                                        <p className="text-2xl font-black text-white">{metrics?.businessMetrics?.avgDaysToClose} días</p>
+                                        <p className="text-[9px] text-white/20">desde publicación</p>
+                                    </div>
+                                </div>
+
+                                <div className="p-4 rounded-2xl bg-purple-500/5 border border-purple-500/10 flex flex-col justify-between">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <Award size={14} className="text-purple-400" />
+                                        <span className="text-[10px] text-purple-400/60 uppercase tracking-widest font-bold">Co-ventas Activas</span>
+                                    </div>
+                                    <div className="flex items-baseline gap-2">
+                                        <p className="text-2xl font-black text-white">{metrics?.businessMetrics?.totalCoVenta}</p>
+                                        <p className="text-[9px] text-white/20">colaboraciones</p>
+                                    </div>
+                                </div>
+
+                                <div className="p-4 rounded-2xl bg-accent-orange/5 border border-accent-orange/10 flex flex-col justify-between">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <Wallet size={14} className="text-accent-orange" />
+                                        <span className="text-[10px] text-accent-orange/60 uppercase tracking-widest font-bold">Liquidez Sistema</span>
+                                    </div>
+                                    <div className="flex items-baseline gap-2">
+                                        <p className="text-2xl font-black text-white">{metrics?.businessMetrics?.totalWalletBalance?.toLocaleString()} Bs</p>
+                                        <p className="text-[9px] text-white/20">total en billeteras</p>
+                                    </div>
+                                </div>
                             </div>
 
                             {/* Quick Pending Preview */}
@@ -736,8 +811,90 @@ const AdminProfilePage = () => {
                             )}
                         </div>
                     )}
+
+                    {/* ── RESOURCES TAB ─────────────────────────── */}
+                    {activeTab === 'resources' && (
+                        <div className="space-y-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="glass-card p-4 border border-white/5 bg-gradient-to-br from-blue-500/5 to-transparent">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400">
+                                            <Camera size={18} />
+                                        </div>
+                                        <h4 className="text-sm font-bold text-white/70">Cloudflare R2 (Imágenes)</h4>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between items-end">
+                                            <div>
+                                                <p className="text-[10px] text-white/20 uppercase tracking-widest">Total Imágenes</p>
+                                                <p className="text-2xl font-bold text-white tabular-nums">{metrics?.resourceUsage?.totalImages?.toLocaleString()}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-[10px] text-white/20 uppercase tracking-widest">Almacenamiento Est.</p>
+                                                <p className="text-xl font-bold text-blue-400 tabular-nums">
+                                                    {((metrics?.resourceUsage?.estimatedR2UsageMB ?? 0) / 1024).toFixed(2)} GB
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+                                            <motion.div initial={{ width: 0 }} animate={{ width: '45%' }} className="h-full bg-blue-500 rounded-full" />
+                                        </div>
+                                        <p className="text-[10px] text-white/10 italic leading-relaxed">
+                                            * Basado en un promedio de 450KB por imagen WebP. Cloudflare R2 permite hasta 10GB gratis.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="glass-card p-4 border border-white/5 bg-gradient-to-br from-purple-500/5 to-transparent">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <div className="p-2 bg-purple-500/10 rounded-lg text-purple-400">
+                                            <TrendingUp size={18} />
+                                        </div>
+                                        <h4 className="text-sm font-bold text-white/70">Supabase (Base de Datos)</h4>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between items-end">
+                                            <div>
+                                                <p className="text-[10px] text-white/20 uppercase tracking-widest">Registros Totales</p>
+                                                <p className="text-2xl font-bold text-white tabular-nums">{metrics?.resourceUsage?.supabaseRowsEst?.toLocaleString()}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-[10px] text-white/20 uppercase tracking-widest">Uso de API</p>
+                                                <p className="text-xl font-bold text-purple-400 font-mono">ESTABLE</p>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between text-[10px] text-white/40">
+                                                <span>Mensajes Enviados</span>
+                                                <span className="font-bold">{metrics?.resourceUsage?.totalMessages}</span>
+                                            </div>
+                                            <div className="flex justify-between text-[10px] text-white/40">
+                                                <span>Requerimientos Activos</span>
+                                                <span className="font-bold">{metrics?.resourceUsage?.totalRequirements}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+                               <h5 className="text-[10px] text-white/20 uppercase tracking-[0.2em] mb-4">Interacción del Sistema (Mensajería)</h5>
+                               <div className="h-[180px]">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={metrics?.monthlyChart || []}>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" />
+                                            <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.2)' }} axisLine={false} tickLine={false} />
+                                            <Tooltip contentStyle={{ backgroundColor: 'rgba(14,14,20,0.97)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, fontSize: 11 }} />
+                                            <Bar dataKey="mensajes" name="Mensajes" fill="#a855f7" radius={[4, 4, 0, 0]} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                               </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </motion.div>
+
         </div>
     );
 };

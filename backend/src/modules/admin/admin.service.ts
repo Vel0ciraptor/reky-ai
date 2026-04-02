@@ -23,7 +23,9 @@ export class AdminService {
       totalAgencies, salesWeek, salesMonth, salesYear,
       propsWeek, propsMonth, propsYear, agentsThisMonth,
       ventaCount, alquilerCount, anticreticoCount,
-      allVerifiedTx, allProperties,
+      allVerifiedTx, allProperties, totalImages,
+      totalMessages, totalRequirements,
+      totalCoVenta, totalWalletBalance,
     ] = await Promise.all([
       this.prisma.agent.count({ where: { role: { not: 'admin' } } }),
       this.prisma.property.count(),
@@ -43,13 +45,40 @@ export class AdminService {
       // Bulk fetch once — slice in JS for daily/weekly/monthly charts
       this.prisma.transaction.findMany({
         where: { verificado: true, fecha: { gte: twelveMonthsAgo } },
-        select: { fecha: true },
+        include: { property: { select: { createdAt: true } } },
       }),
       this.prisma.property.findMany({
         where: { createdAt: { gte: twelveMonthsAgo } },
         select: { createdAt: true },
       }),
+      this.prisma.propertyImage.count(),
+      this.prisma.message.count(),
+      this.prisma.requerimiento.count(),
+      this.prisma.propertyAgent.count({ where: { enCoventa: true } }),
+      this.prisma.wallet.aggregate({ _sum: { balance: true } }),
     ]);
+
+    // Calculate Average Time to Close (verified tx only)
+    let avgDaysToClose = 0;
+    const closedWithCreationDates = allVerifiedTx.filter(t => t.property?.createdAt);
+    if (closedWithCreationDates.length > 0) {
+      const totalDays = closedWithCreationDates.reduce((acc, t) => {
+        const diff = t.fecha.getTime() - t.property!.createdAt.getTime();
+        return acc + (diff / (1000 * 60 * 60 * 24));
+      }, 0);
+      avgDaysToClose = totalDays / closedWithCreationDates.length;
+    }
+
+    // Also fetch messages for the chart if we want interaction trend
+    const allMessages = await this.prisma.message.findMany({
+        where: { createdAt: { gte: twelveMonthsAgo } },
+        select: { createdAt: true },
+    });
+
+    const allImages = await this.prisma.propertyImage.findMany({
+        where: { createdAt: { gte: twelveMonthsAgo } },
+        select: { createdAt: true },
+    });
 
     // Monthly chart (12 months) — pure JS, zero extra DB calls
     const monthlyChart = Array.from({ length: 12 }, (_, i) => {
@@ -59,6 +88,8 @@ export class AdminService {
         label: d.toLocaleDateString('es-BO', { month: 'short' }),
         ventas: allVerifiedTx.filter((t) => t.fecha >= d && t.fecha < next).length,
         propiedades: allProperties.filter((p) => p.createdAt >= d && p.createdAt < next).length,
+        mensajes: allMessages.filter((m) => m.createdAt >= d && m.createdAt < next).length,
+        imagenes: allImages.filter((img) => img.createdAt >= d && img.createdAt < next).length,
       };
     });
 
@@ -94,6 +125,19 @@ export class AdminService {
       propsWeek, propsMonth, propsYear, agentsThisMonth,
       dailyChart, weeklyChart, monthlyChart,
       propertyDistribution: { venta: ventaCount, alquiler: alquilerCount, anticretico: anticreticoCount },
+      resourceUsage: {
+          totalImages,
+          totalMessages,
+          totalRequirements,
+          estimatedR2UsageMB: totalImages * 0.45, // 450KB per WebP image estimate
+          supabaseRowsEst: totalAgents + totalProperties + totalTransactions + totalMessages + totalRequirements,
+      },
+      businessMetrics: {
+          totalCoVenta,
+          totalWalletBalance: Number(totalWalletBalance._sum.balance || 0),
+          avgDaysToClose: Number(avgDaysToClose.toFixed(1)),
+          conversionRate: totalProperties > 0 ? Number(((totalTransactions / totalProperties) * 100).toFixed(2)) : 0,
+      }
     };
   }
 
