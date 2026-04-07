@@ -606,7 +606,7 @@ export default function SearchPage() {
         queryKey: ['properties', q, tipo, dormitorios, banos, priceRange, priceMode, exactPrice, mascotas, estacionamiento, patio, piscina, tipoVivienda, terrenoMin, terrenoMax, construccionMin, construccionMax, searchBounds?.toBBoxString()],
         queryFn: async ({ pageParam = 1 }) => {
             try {
-                const limit = 40; // Maintain batch size for progressive loading
+                const limit = 100; // Larger batch to reduce render frequency
                 const params = { ...buildParams(), limit: String(limit), page: String(pageParam) };
                 const r = await api.get(`/search?${new URLSearchParams(params)}`);
                 
@@ -631,10 +631,10 @@ export default function SearchPage() {
         staleTime: 5 * 60 * 1000,
     });
 
-    // EFFECT: Progressive Auto-loading
+    // EFFECT: Progressive Auto-loading (optimized for mobile stability)
     useEffect(() => {
         if (hasNextPage && !isFetching && !isLoading) {
-            const timer = setTimeout(() => fetchNextPage(), 400); // Small delay to avoid blocking UI
+            const timer = setTimeout(() => fetchNextPage(), 2000); // 2s interval to let the mobile main thread breathe
             return () => clearTimeout(timer);
         }
     }, [hasNextPage, isFetching, isLoading, fetchNextPage]);
