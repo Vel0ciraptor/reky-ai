@@ -7,7 +7,7 @@ import {
     Search, Camera, SlidersHorizontal,
     Bed, Bath, Car, X, ChevronUp, ChevronDown,
     MapPin, DollarSign, RefreshCw, PenTool, Check,
-    Dog, TreePine, Waves
+    Dog, TreePine, Waves, ClipboardList
 } from 'lucide-react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -606,11 +606,10 @@ export default function SearchPage() {
         queryKey: ['properties', q, tipo, dormitorios, banos, priceRange, priceMode, exactPrice, mascotas, estacionamiento, patio, piscina, tipoVivienda, terrenoMin, terrenoMax, construccionMin, construccionMax, searchBounds?.toBBoxString()],
         queryFn: async ({ pageParam = 1 }) => {
             try {
-                const limit = 40;
+                const limit = 40; // Maintain batch size for progressive loading
                 const params = { ...buildParams(), limit: String(limit), page: String(pageParam) };
                 const r = await api.get(`/search?${new URLSearchParams(params)}`);
                 
-                // Handle new paginated response or old array format
                 if (r.data && r.data.items) {
                     return {
                         data: r.data.items,
@@ -632,8 +631,15 @@ export default function SearchPage() {
         staleTime: 5 * 60 * 1000,
     });
 
-    const properties = useMemo(() => pagesData?.pages.flatMap((p: any) => p.data ?? []) ?? [], [pagesData]);
+    // EFFECT: Progressive Auto-loading
+    useEffect(() => {
+        if (hasNextPage && !isFetching && !isLoading) {
+            const timer = setTimeout(() => fetchNextPage(), 400); // Small delay to avoid blocking UI
+            return () => clearTimeout(timer);
+        }
+    }, [hasNextPage, isFetching, isLoading, fetchNextPage]);
 
+    const properties = useMemo(() => pagesData?.pages.flatMap((p: any) => p.data ?? []) ?? [], [pagesData]);
 
     // Always show all markers, filter logically if polygon drawn
     const displayProperties = useMemo(() => {
@@ -965,6 +971,24 @@ export default function SearchPage() {
 
                 {/* Mobile Map Controls - Bottom Right */}
                 <div className="absolute bottom-4 right-4 z-[500] flex flex-col gap-3">
+                    {/* View List Floating Button (Unified style) */}
+                    <AnimatePresence>
+                        {!showList && (
+                            <motion.button
+                                initial={{ scale: 0, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ scale: 0, opacity: 0 }}
+                                onClick={() => { setShowList(true); setSheetState('peek'); }}
+                                className="w-12 h-12 bg-accent-orange text-white rounded-full flex items-center justify-center shadow-2xl relative border-2 border-white/10 active:scale-95 transition-all"
+                            >
+                                <ClipboardList size={22} />
+                                <div className="absolute -top-1 -right-1 bg-bg-dark border border-white/20 text-[10px] font-black px-1.5 py-0.5 rounded-full text-white shadow-lg">
+                                    {displayProperties.length}
+                                </div>
+                            </motion.button>
+                        )}
+                    </AnimatePresence>
+
                     {/* Search Modal Trigger */}
                     <button
                         onClick={() => setShowSearchModal(true)}
@@ -1161,23 +1185,7 @@ export default function SearchPage() {
                     )}
                 </AnimatePresence>
 
-                {/* Floating "Ver lista" button — when sheet is hidden */}
-                <AnimatePresence>
-                    {!showList && (
-                        <motion.button
-                            initial={{ y: 20, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            exit={{ y: 20, opacity: 0 }}
-                            onClick={() => { setShowList(true); setSheetState('peek'); }}
-                            className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[500] bg-bg-dark/95 border border-glass-border text-sm font-semibold text-white px-5 py-3 rounded-full shadow-2xl flex items-center gap-2 hover:border-accent-orange transition-all active:scale-95"
-                            style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}
-                        >
-                            <MapPin size={14} className="text-accent-orange" />
-                            Ver {displayProperties.length > 0 ? `${displayProperties.length} propiedades` : 'lista'}
-                            <ChevronUp size={14} />
-                        </motion.button>
-                    )}
-                </AnimatePresence>
+                {/* Floating "Ver lista" button no longer at bottom center */}
             </div>
         </div>
     );
