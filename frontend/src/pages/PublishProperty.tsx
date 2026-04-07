@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import {
     Plus, MapPin, DollarSign, Bed, Bath, Car,
     Wind, Waves, Clock, FileText, Loader2, CheckCircle2,
-    Tag, X, Navigation, Image as ImageIcon, Camera, Trash2, Wallet, ChevronRight, Eye, List,
+    Tag, X, Navigation, Image as ImageIcon, Camera, Trash2, Wallet, ChevronRight,
     ArrowLeft, Home
 } from 'lucide-react';
 import api from '../lib/api';
@@ -149,7 +149,7 @@ const SlideButton = ({ onConfirm, isSubmitting }: { onConfirm: () => void, isSub
 };
 
 const PublishProperty = () => {
-    const { refreshAgent, agent } = useAuth();
+    const { refreshAgent } = useAuth();
     const navigate = useNavigate();
     const [showForm, setShowForm] = useState(false);
     const [pendingData, setPendingData] = useState<PublishForm | null>(null);
