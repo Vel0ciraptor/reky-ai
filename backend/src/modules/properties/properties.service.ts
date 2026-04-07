@@ -19,6 +19,13 @@ export class PropertiesService {
   async create(createPropertyDto: CreatePropertyDto & { id?: string }, agentId: string) {
     const { tags, images, id, ...data } = createPropertyDto;
 
+    // --- QUOTA CHECK (Supabase DB safety) ---
+    const totalProps = await this.prisma.property.count();
+    if (totalProps >= 200000) {
+      throw new BadRequestException('Límite de la base de datos alcanzado (200k propiedades). Reporte al administrador.');
+    }
+    // -----------------------------------------
+
     // Try to deduct 1 bs first
     await this.walletService.deduct(agentId, 1);
     try {

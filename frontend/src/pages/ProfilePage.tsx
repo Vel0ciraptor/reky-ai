@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Home, CheckCircle, Wallet, Trophy, TrendingUp, FileText, Settings, LogOut, X, Upload, Save, Check, Camera, BarChart3, Clock, DollarSign, Edit3, Loader2, Users, UserPlus, Building2, Trash2, Sun, Moon, ExternalLink, MapPin } from 'lucide-react';
+import { Star, Home, CheckCircle, Wallet, Trophy, TrendingUp, FileText, Settings, LogOut, X, Upload, Save, Check, Camera, BarChart3, Clock, DollarSign, Edit3, Loader2, Users, UserPlus, Building2, Trash2, Sun, Moon, ExternalLink, MapPin, Mail, Phone, Calendar, Plus } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../lib/api';
@@ -807,28 +807,91 @@ const ProfilePage = () => {
                         </motion.div>
                     </div>
 
-                    {/* ── ACTION BUTTONS ─────────────────────────────────── */}
-                    <h3 className="text-[11px] uppercase tracking-widest font-bold text-gray-500 mb-3 ml-2">Herramientas</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+                    {/* ── ACCOUNT INFORMATION ─────────────────────────────────── */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        {/* Profile Info Card */}
+                        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+                            className="md:col-span-2 glass-card p-6 flex flex-col gap-6">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-[11px] uppercase tracking-widest font-bold text-gray-500">Información del Perfil</h3>
+                                <button onClick={() => setActiveModal('settings')} className="text-[10px] font-bold text-accent-orange hover:underline">Editar Perfil</button>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-gray-400">
+                                            <Mail size={14} />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Email</p>
+                                            <p className="text-sm font-medium text-white/90">{displayEmail}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-gray-400">
+                                            <Phone size={14} />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Teléfono</p>
+                                            <p className="text-sm font-medium text-white/90">{agent?.phone || 'No registrado'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-gray-400">
+                                            <Calendar size={14} />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Miembro desde</p>
+                                            <p className="text-sm font-medium text-white/90">{agent?.createdAt ? new Date(agent.createdAt).toLocaleDateString('es-BO', { month: 'long', year: 'numeric' }) : '—'}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-gray-400">
+                                            <Building2 size={14} />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Agencia</p>
+                                            <p className="text-sm font-medium text-white/90">{agent?.agency?.name || 'Independiente'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+
+                        {/* Wallet Balance Card - Integrated */}
+                        <motion.div initial={{ opacity: 0, x: 15 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}
+                            className="glass-card p-6 flex flex-col justify-between relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-accent-orange/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
+                            <div>
+                                <h3 className="text-[11px] uppercase tracking-widest font-bold text-gray-500 mb-4">Mi Billetera</h3>
+                                <p className="text-3xl font-bold text-white mb-1 tabular-nums">Bs. {stats.walletBalance}</p>
+                                <p className="text-[10px] text-gray-500">Saldo disponible para publicaciones</p>
+                            </div>
+                            <button onClick={() => setActiveModal('wallet')} className="w-full mt-6 py-2.5 rounded-xl bg-accent-orange text-white text-xs font-bold hover:bg-accent-orange-hover transition-all flex items-center justify-center gap-2">
+                                <Plus size={14} /> Recargar Saldo
+                            </button>
+                        </motion.div>
+                    </div>
+
+                    {/* ── QUICK TOOLS ─────────────────────────────────── */}
+                    <h3 className="text-[11px] uppercase tracking-widest font-bold text-gray-500 mb-3 ml-2">Accesos Rápidos</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                         {[
+                            { key: 'properties' as const, icon: Home, color: 'text-purple-400', hoverBg: 'group-hover:bg-purple-500', title: 'Propiedades', sub: `${propCount} publicadas` },
                             { key: 'report' as const, icon: FileText, color: 'text-blue-400', hoverBg: 'group-hover:bg-blue-500', title: 'Reportar Venta', sub: 'Subir contrato' },
-                            { key: 'wallet' as const, icon: Wallet, color: 'text-accent-orange', hoverBg: 'group-hover:bg-accent-orange', title: 'Recargar', sub: 'QR o Tarjeta' },
                             { key: 'ranking' as const, icon: Trophy, color: 'text-yellow-400', hoverBg: 'group-hover:bg-yellow-500', title: 'Ranking', sub: 'Tabla de líderes', path: '/ranking' },
-                            { key: 'properties' as const, icon: Home, color: 'text-purple-400', hoverBg: 'group-hover:bg-purple-500', title: 'Mis Propiedades', sub: 'Administrar' },
-                            { key: 'settings' as const, icon: Settings, color: 'text-gray-400', hoverBg: 'group-hover:bg-gray-400', title: 'Configuración', sub: 'Perfil y cuenta' },
+                            { key: 'settings' as const, icon: Settings, color: 'text-gray-400', hoverBg: 'group-hover:bg-gray-400', title: 'Ajustes', sub: 'Cuenta y seguridad' },
                         ].map((b, i) => (
                             <motion.button key={b.key} onClick={() => b.path ? navigate(b.path) : setActiveModal(b.key as any)}
                                 initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 + (i * 0.05) }}
-                                className="relative p-4 sm:p-5 rounded-3xl overflow-hidden group hover:-translate-y-1 transition-all duration-300 text-left border border-white/5"
-                                style={{ background: 'rgba(25,25,30,0.4)', backdropFilter: 'blur(10px)' }}>
-
-                                <div className={`absolute top-0 left-0 w-full h-[3px] ${b.hoverBg} opacity-0 group-hover:opacity-100 transition-all duration-300`} />
-
-                                <div className="w-10 h-10 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
-                                    <b.icon size={18} className={`${b.color} group-hover:text-white transition-colors`} />
+                                className="glass-card p-4 group hover:-translate-y-1 transition-all duration-300 text-left border border-white/5 active:scale-95">
+                                <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+                                    <b.icon size={16} className={`${b.color} group-hover:text-white transition-colors`} />
                                 </div>
-                                <p className="font-bold text-white/90 text-sm mb-0.5">{b.title}</p>
-                                <p className="text-[10px] sm:text-xs text-gray-500 font-medium">{b.sub}</p>
+                                <p className="font-bold text-white/90 text-xs mb-0.5">{b.title}</p>
+                                <p className="text-[10px] text-gray-500 font-medium truncate">{b.sub}</p>
                             </motion.button>
                         ))}
                     </div>

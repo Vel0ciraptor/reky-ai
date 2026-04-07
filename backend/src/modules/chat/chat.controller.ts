@@ -1,4 +1,4 @@
-import { Controller, Get, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Delete, Param, UseGuards, Request } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 
@@ -15,5 +15,10 @@ export class ChatController {
   @Get('conversation/:partnerId')
   getConversation(@Request() req: any, @Param('partnerId') partnerId: string) {
     return this.chatService.getConversation(req.user.sub, partnerId);
+  }
+
+  @Delete('conversation/:partnerId')
+  deleteConversation(@Request() req: any, @Param('partnerId') partnerId: string) {
+    return this.chatService.deleteConversation(req.user.sub, partnerId);
   }
 }

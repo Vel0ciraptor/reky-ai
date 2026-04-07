@@ -19,6 +19,7 @@ interface Agent {
     agency?: { id: string; name: string } | null;
     wallet?: { balance: number };
     _count?: { properties: number; transactions: number };
+    createdAt?: string;
 }
 
 interface AuthContextType {

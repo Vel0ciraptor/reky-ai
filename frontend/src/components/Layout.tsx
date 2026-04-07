@@ -12,10 +12,10 @@ interface LayoutProps {
 }
 
 const navItems = [
-    { name: 'Buscar', icon: Search, path: '/search' },
     { name: 'Chat', icon: MessageSquare, path: '/chat' },
-    { name: 'Publicar', icon: Plus, path: '/publish' },
+    { name: 'Buscar', icon: Search, path: '/search' },
     { name: 'Req.', icon: ClipboardList, path: '/requirements' },
+    { name: 'Publicar', icon: Plus, path: '/publish' },
     { name: 'Perfil', icon: User, path: '/profile' },
 ];
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Send, Wallet, Lock, Shield, Search, Loader2, ArrowLeft, X, Phone, Mail, MessageCircle } from 'lucide-react';
+import { Send, Wallet, Lock, Shield, Search, Loader2, ArrowLeft, X, Phone, Mail, MessageCircle, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -286,6 +286,25 @@ const ChatPage = () => {
         }, 2000);
     };
 
+    const deleteConversation = async (partnerId: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!confirm('¿Eliminar esta conversación?')) return;
+        try {
+            await api.delete(`/chat/conversation/${partnerId}`);
+        } catch (err) {
+            console.error('Error deleting conversation:', err);
+        }
+        setConversations(prev => prev.filter(c => c.partnerId !== partnerId));
+        if (selectedPartner?.partnerId === partnerId) {
+            setSelectedPartner(null);
+        }
+        // Also clear from localStorage
+        if (agent?.id) {
+            const updated = conversations.filter(c => c.partnerId !== partnerId);
+            localStorage.setItem(`chat_history_${agent.id}`, JSON.stringify(updated));
+        }
+    };
+
     const filteredConvs = conversations.filter(c =>
         c.partnerName.toLowerCase().includes(searchQ.toLowerCase()) ||
         c.lastMessage.toLowerCase().includes(searchQ.toLowerCase())
@@ -295,12 +314,7 @@ const ChatPage = () => {
 
     // ── CHAT VIEW ────────────────────────────────────────────────
     const renderChatView = () => (
-        <motion.div
-            key="chat"
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ type: 'tween', duration: 0.25 }}
+        <div
             className="absolute inset-0 flex flex-col bg-bg-dark z-10"
         >
             {/* Header */}
@@ -434,17 +448,12 @@ const ChatPage = () => {
                     </button>
                 </div>
             </div>
-        </motion.div>
+        </div>
     );
 
     // ── CONVERSATION LIST ────────────────────────────────────────
     const renderConvList = () => (
-        <motion.div
-            key="list"
-            initial={{ x: '-100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '-100%' }}
-            transition={{ type: 'tween', duration: 0.25 }}
+        <div
             className="absolute inset-0 flex flex-col"
         >
             {/* Header */}
@@ -487,9 +496,8 @@ const ChatPage = () => {
                     </div>
                 ) : (
                     filteredConvs.map(conv => (
-                        <motion.div
+                        <div
                             key={conv.partnerId}
-                            whileTap={{ scale: 0.98 }}
                             onClick={() => openConversation(conv.partnerId, conv)}
                             className="flex items-center gap-3 px-4 py-3.5 border-b border-glass-border cursor-pointer hover:bg-white/4 active:bg-white/8 transition-colors"
                         >
@@ -519,7 +527,14 @@ const ChatPage = () => {
                                     <span className="text-[10px] font-bold text-white">{conv.unread}</span>
                                 </div>
                             )}
-                        </motion.div>
+                            <button
+                                onClick={(e) => deleteConversation(conv.partnerId, e)}
+                                className="p-2 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-all flex-shrink-0"
+                                title="Eliminar conversación"
+                            >
+                                <Trash2 size={14} />
+                            </button>
+                        </div>
                     ))
                 )}
             </div>
@@ -528,14 +543,12 @@ const ChatPage = () => {
             <div className="flex-shrink-0 px-4 py-3 border-t border-glass-border">
                 <p className="text-xs text-gray-600 text-center">Cada mensaje enviado cuesta 1 Bs de tu wallet</p>
             </div>
-        </motion.div>
+        </div>
     );
 
     return (
         <div className="relative overflow-hidden" style={{ height: 'calc(100vh - 10rem)' }}>
-            <AnimatePresence mode="wait" initial={false}>
-                {selectedPartner ? renderChatView() : renderConvList()}
-            </AnimatePresence>
+            {selectedPartner ? renderChatView() : renderConvList()}
         </div>
     );
 };

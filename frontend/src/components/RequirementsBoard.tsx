@@ -458,11 +458,6 @@ export default function RequirementsBoard() {
                         ))}
                     </div>
                 </div>
-                {!showForm && activeTab === 'requerimientos' && (
-                    <button onClick={() => setShowForm(true)} className="btn-primary py-3 px-6 text-sm flex items-center gap-2 shadow-lg shadow-accent-orange/20">
-                        <Plus size={18} /> Nuevo Requerimiento
-                    </button>
-                )}
             </div>
 
             <AnimatePresence>
@@ -487,7 +482,7 @@ export default function RequirementsBoard() {
                         <button onClick={() => setShowForm(true)} className="btn-primary py-3 px-8 text-sm flex gap-2 items-center"><Plus size={18} />Publicar primer requerimiento</button>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 gap-6">
+                    <div className="grid grid-cols-1 gap-4 pb-24">
                         {requirements.map(req => (
                             <ReqCard key={req.id} req={req} onRefresh={fetchRequirements} />
                         ))}
@@ -498,6 +493,14 @@ export default function RequirementsBoard() {
             ) : (
                 <SuggestionsView requirements={requirements} />
             )}
+
+            {/* FAB Button */}
+            <button
+                onClick={() => setShowForm(true)}
+                className="fixed bottom-24 right-6 z-50 w-14 h-14 bg-accent-orange rounded-full flex items-center justify-center shadow-2xl shadow-accent-orange/40 hover:scale-110 active:scale-95 transition-transform"
+            >
+                <Plus size={28} className="text-white" />
+            </button>
         </div>
     );
 }

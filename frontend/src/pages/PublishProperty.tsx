@@ -8,7 +8,8 @@ import { useAuth } from '../context/AuthContext';
 import {
     Plus, MapPin, DollarSign, Bed, Bath, Car,
     Wind, Waves, Clock, FileText, Loader2, CheckCircle2,
-    Tag, X, Navigation, Image as ImageIcon, Camera, Trash2, Wallet, ChevronRight, Eye, List
+    Tag, X, Navigation, Image as ImageIcon, Camera, Trash2, Wallet, ChevronRight, Eye, List,
+    ArrowLeft, Home
 } from 'lucide-react';
 import api from '../lib/api';
 import { useNavigate } from 'react-router-dom';
@@ -148,8 +149,9 @@ const SlideButton = ({ onConfirm, isSubmitting }: { onConfirm: () => void, isSub
 };
 
 const PublishProperty = () => {
-    const { refreshAgent } = useAuth();
+    const { refreshAgent, agent } = useAuth();
     const navigate = useNavigate();
+    const [showForm, setShowForm] = useState(false);
     const [pendingData, setPendingData] = useState<PublishForm | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
@@ -159,6 +161,8 @@ const PublishProperty = () => {
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [images, setImages] = useState<string[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [myProperties, setMyProperties] = useState<any[]>([]);
+    const [propsLoading, setPropsLoading] = useState(true);
 
     const [propertyId] = useState(() => uuidv4());
 
@@ -341,6 +345,21 @@ const PublishProperty = () => {
         }
     };
 
+    // Fetch agent's published properties
+    const fetchMyProperties = useCallback(async () => {
+        setPropsLoading(true);
+        try {
+            const res = await api.get('/agents/my-properties');
+            setMyProperties(res.data);
+        } catch (err) {
+            console.error('Error fetching properties:', err);
+        } finally {
+            setPropsLoading(false);
+        }
+    }, []);
+
+    useEffect(() => { fetchMyProperties(); }, [fetchMyProperties]);
+
     if (isSuccess) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
@@ -351,20 +370,85 @@ const PublishProperty = () => {
                 <h2 className="text-3xl font-bold mb-3">¡Propiedad Publicada!</h2>
                 <p className="text-gray-400 mb-8 max-w-sm">Tu propiedad está registrada y visible en el mapa para otros agentes.</p>
                 <div className="flex flex-col sm:flex-row gap-3">
-                    <button onClick={() => { setIsSuccess(false); setMapPin(null); setTags([]); setImages([]); }} className="btn-primary">
-                        Publicar otra propiedad
+                    <button onClick={() => { setIsSuccess(false); setShowForm(false); setMapPin(null); setTags([]); setImages([]); fetchMyProperties(); }} className="btn-primary">
+                        Ver mis propiedades
                     </button>
                     <button
-                        onClick={() => navigate('/profile?tab=properties')}
+                        onClick={() => { setIsSuccess(false); setShowForm(true); setMapPin(null); setTags([]); setImages([]); }}
                         className="flex items-center gap-2 px-5 py-3 rounded-xl border border-glass-border text-gray-300 hover:border-accent-orange hover:text-accent-orange transition-all text-sm font-semibold"
                     >
-                        <Eye size={16} /> Ver mis propiedades
+                        <Plus size={16} /> Publicar otra propiedad
                     </button>
                 </div>
             </div>
         );
     }
 
+    // ── Properties List View (default) ──
+    if (!showForm) {
+        return (
+            <div className="max-w-3xl mx-auto py-6 px-4 relative" style={{ minHeight: 'calc(100vh - 12rem)' }}>
+                {/* Header */}
+                <div className="flex items-center gap-4 mb-6">
+                    <div className="w-10 h-10 bg-accent-orange/20 text-accent-orange rounded-xl flex items-center justify-center flex-shrink-0">
+                        <Home size={22} />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold">Mis Inmuebles</h1>
+                        <p className="text-gray-500 text-sm">{myProperties.length} propiedades publicadas</p>
+                    </div>
+                </div>
+
+                {propsLoading ? (
+                    <div className="flex items-center justify-center py-20">
+                        <Loader2 size={28} className="animate-spin text-accent-orange" />
+                    </div>
+                ) : myProperties.length === 0 ? (
+                    <div className="glass-card p-16 text-center flex flex-col items-center border border-dashed border-glass-border">
+                        <Home size={48} className="text-gray-700 mb-6" />
+                        <h3 className="text-lg font-bold text-gray-400 mb-2">Aún no tienes propiedades</h3>
+                        <p className="text-gray-600 text-sm max-w-xs mb-8">Publica tu primer inmueble para que otros agentes puedan colaborar contigo.</p>
+                        <button onClick={() => setShowForm(true)} className="btn-primary py-3 px-8 text-sm flex gap-2 items-center">
+                            <Plus size={18} /> Publicar primer inmueble
+                        </button>
+                    </div>
+                ) : (
+                    <div className="space-y-3 pb-24">
+                        {myProperties.map((p: any) => (
+                            <div key={p.id} className="glass-card border border-glass-border hover:border-accent-orange/30 transition-all overflow-hidden cursor-pointer" onClick={() => navigate(`/property/${p.id}`)}>
+                                <div className="flex gap-3 p-3 items-center">
+                                    <div className="w-16 h-16 bg-gray-800 rounded-xl overflow-hidden flex-shrink-0">
+                                        {p.image ? (
+                                            <img src={p.image} alt="" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center text-gray-600"><Home size={20} /></div>
+                                        )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-bold truncate">{p.descripcion || p.ubicacion}</p>
+                                        <p className="text-[10px] text-gray-500 truncate">{p.ubicacion}</p>
+                                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold capitalize ${p.tipo === 'venta' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : p.tipo === 'alquiler' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'}`}>{p.tipo}</span>
+                                            <span className="text-xs text-accent-orange font-semibold">${Number(p.precio).toLocaleString()}</span>
+                                        </div>
+                                    </div>
+                                    <ChevronRight size={16} className="text-gray-600 flex-shrink-0" />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* FAB Button */}
+                <button
+                    onClick={() => setShowForm(true)}
+                    className="fixed bottom-24 right-6 z-50 w-14 h-14 bg-accent-orange rounded-full flex items-center justify-center shadow-2xl shadow-accent-orange/40 hover:scale-110 active:scale-95 transition-transform"
+                >
+                    <Plus size={28} className="text-white" />
+                </button>
+            </div>
+        );
+    }
     return (
         <div className="max-w-3xl mx-auto py-6 px-4">
 
@@ -409,25 +493,20 @@ const PublishProperty = () => {
             </AnimatePresence>
 
             {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 border-b border-glass-border pb-4">
-                <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-accent-orange/20 text-accent-orange rounded-xl flex items-center justify-center flex-shrink-0">
-                        <Plus size={22} />
-                    </div>
-                    <div>
-                        <h1 className="text-2xl font-bold">Publicar Inmueble</h1>
-                        <p className="text-gray-500 text-sm">
-                            Completa los datos para que otros agentes puedan colaborar.
-                        </p>
-                    </div>
-                </div>
+            <div className="flex items-center gap-4 mb-8 border-b border-glass-border pb-4">
                 <button
                     type="button"
-                    onClick={() => navigate('/profile?tab=properties')}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl border border-glass-border text-gray-400 hover:border-accent-orange hover:text-accent-orange transition-all text-xs font-semibold flex-shrink-0"
+                    onClick={() => setShowForm(false)}
+                    className="w-10 h-10 bg-white/5 border border-glass-border rounded-xl flex items-center justify-center text-gray-400 hover:text-white hover:border-accent-orange transition-all flex-shrink-0"
                 >
-                    <List size={14} /> Mis Propiedades
+                    <ArrowLeft size={18} />
                 </button>
+                <div>
+                    <h1 className="text-2xl font-bold">Publicar Inmueble</h1>
+                    <p className="text-gray-500 text-sm">
+                        Completa los datos para que otros agentes puedan colaborar.
+                    </p>
+                </div>
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">

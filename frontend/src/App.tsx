@@ -12,6 +12,7 @@ import RequirementsBoard from './components/RequirementsBoard';
 import { Loader2 } from 'lucide-react';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import ReloadPrompt from './components/ReloadPrompt';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { agent, loading } = useAuth();
@@ -27,6 +28,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 function App() {
   return (
+    <>
     <Routes>
       {/* Public routes */}
       <Route path="/auth" element={<AuthPage />} />
@@ -66,6 +68,8 @@ function App() {
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/search" replace />} />
     </Routes>
+    <ReloadPrompt />
+  </>
   );
 }
 

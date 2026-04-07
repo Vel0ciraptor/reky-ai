@@ -162,7 +162,7 @@ const PriceInputs = ({ valueMin, valueMax, onChange }: {
 };
 
 // ── Property Card (shared between desktop list + mobile sheet) ──
-const PropertyCard = ({ p, selected, onClick, layout = 'sheet' }: {
+const PropertyCard = ({ p, selected, onClick }: {
     p: any; selected: boolean; onClick: () => void; layout?: 'sheet' | 'sidebar';
 }) => {
     const navigate = useNavigate();
@@ -186,12 +186,6 @@ const PropertyCard = ({ p, selected, onClick, layout = 'sheet' }: {
             className={`rounded-xl cursor-pointer border overflow-hidden transition-all ${selected ? 'border-accent-orange shadow-lg shadow-accent-orange/10' : 'border-glass-border hover:border-white/20'}`}
             style={{ background: selected ? 'rgba(255,106,0,0.05)' : 'rgba(255,255,255,0.02)' }}
         >
-            {p.images?.[0]?.url && (
-                <div className={`overflow-hidden ${layout === 'sidebar' ? 'h-36' : 'h-24'}`}>
-                    <img src={p.images[0].url} alt={p.ubicacion}
-                        className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" />
-                </div>
-            )}
             <div className="p-3">
                 <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
@@ -806,8 +800,8 @@ export default function SearchPage() {
                         className="absolute inset-0 z-0"
                     />
 
-                    {/* Desktop Map Controls */}
-                    <div className="absolute top-4 right-4 z-[500] flex flex-col gap-3">
+                    {/* Desktop Map Controls - Bottom Right */}
+                    <div className="absolute bottom-6 right-4 z-[500] flex flex-col gap-3">
                         {/* Search Modal Trigger */}
                         <button
                             onClick={() => setShowSearchModal(true)}
@@ -882,8 +876,8 @@ export default function SearchPage() {
                         )}
                     </AnimatePresence>
 
-                    {/* "Buscar aquí" — always visible, only fetches on demand */}
-                    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[400] transition-all">
+                    {/* "Buscar aquí" — bottom center */}
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[400] transition-all">
                         {!isDrawing && !drawnPolygon && (
                             <button
                                 onClick={applySearchHere}
@@ -895,14 +889,14 @@ export default function SearchPage() {
                         )}
                     </div>
 
-                    {/* Toggle list button */}
+                    {/* Toggle list button — circle at bottom right */}
                     {!showList && (
                         <button
                             onClick={() => setShowList(true)}
-                            className="absolute top-4 left-4 z-[400] bg-bg-dark/90 border border-glass-border text-gray-300 hover:text-white hover:border-accent-orange px-4 py-2.5 rounded-full text-sm font-semibold flex items-center gap-2 transition-all shadow-xl"
+                            className="absolute bottom-20 right-4 z-[400] w-12 h-12 bg-bg-dark/90 border border-glass-border text-gray-300 hover:text-white hover:border-accent-orange rounded-full flex items-center justify-center transition-all shadow-xl"
+                            title={`Ver lista (${displayProperties.length})`}
                         >
-                            <ChevronUp size={14} />
-                            Ver lista ({displayProperties.length})
+                            <ChevronUp size={20} />
                         </button>
                     )}
 
@@ -969,8 +963,8 @@ export default function SearchPage() {
                     isDrawing={isDrawing} drawingPoints={drawingPoints} setDrawingPoints={setDrawingPoints} drawnPolygon={drawnPolygon}
                     className="absolute inset-0 z-0" />
 
-                {/* Mobile Map Controls */}
-                <div className="absolute top-4 right-4 z-[500] flex flex-col gap-3">
+                {/* Mobile Map Controls - Bottom Right */}
+                <div className="absolute bottom-4 right-4 z-[500] flex flex-col gap-3">
                     {/* Search Modal Trigger */}
                     <button
                         onClick={() => setShowSearchModal(true)}
@@ -1045,9 +1039,9 @@ export default function SearchPage() {
                     )}
                 </AnimatePresence>
 
-                {/* "Buscar aquí" — always visible on mobile */}
-                <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[400]">
-                    {!isDrawing && !drawnPolygon && (
+                {/* "Buscar aquí" — bottom center on mobile */}
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[400]">
+                    {!isDrawing && !drawnPolygon && !showList && (
                         <button
                             onClick={applySearchHere}
                             className="shadow-xl px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-2 transition-all active:scale-95 border bg-bg-dark/90 text-gray-300 border-glass-border hover:border-accent-orange hover:text-accent-orange"

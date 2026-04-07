@@ -37,6 +37,16 @@ export class UploadService {
             throw new InternalServerErrorException('Error de configuración del servidor (Bucket)');
         }
 
+        // --- QUOTA CHECK (50GB R2 Limit) ---
+        // 50GB = 51200MB. Estimate 0.45MB per image (WebP). Max = 113777 images.
+        const currentImageCount = await this.prisma.propertyImage.count();
+        if (currentImageCount >= 113777) {
+            throw new InternalServerErrorException(
+                'Límite de almacenamiento alcanzado (50GB). El sistema no permite nuevas imágenes por seguridad de costos.'
+            );
+        }
+        // ------------------------------------
+
         const extension = type.split('/')[1] || 'webp';
         const uniqueName = `reky-ai/${folder}/${userId}/${entityId}/${uuidv4()}.${extension}`;
 

@@ -183,4 +183,17 @@ export class ChatService {
 
     return { partnerInfo, messages, canShareContact, contactInfo };
   }
+
+  async deleteConversation(agentId: string, partnerId: string) {
+    // Delete all messages between these two agents
+    await this.prisma.message.deleteMany({
+      where: {
+        OR: [
+          { senderId: agentId, receiverId: partnerId },
+          { senderId: partnerId, receiverId: agentId },
+        ],
+      },
+    });
+    return { deleted: true };
+  }
 }
