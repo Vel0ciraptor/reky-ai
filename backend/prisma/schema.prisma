@@ -277,5 +277,5 @@ model Match {
   notas           String?
   createdAt       DateTime @default(now()) @map("created_at")
 
-  @@unique([captadorId, requerimientoId, propertyId])
+  @@unique([requerimientoId, propertyId])
 }

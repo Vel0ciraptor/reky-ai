@@ -120,8 +120,7 @@ export class MatchingService {
             
             await this.prisma.match.upsert({
                 where: {
-                    captadorId_requerimientoId_propertyId: {
-                        captadorId: null, // We match by property now
+                    requerimientoId_propertyId: {
                         requerimientoId: req.id,
                         propertyId: prop.id
                     }
@@ -129,6 +128,7 @@ export class MatchingService {
                 create: {
                     requerimientoId: req.id,
                     propertyId: prop.id,
+                    captadorId: firstAgent?.id || null, // Optional link
                     scoreMatch: pts,
                     estado: 'nuevo',
                     notas: `Match con la propiedad en ${prop.ubicacion}`
