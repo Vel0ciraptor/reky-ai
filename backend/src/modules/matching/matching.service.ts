@@ -49,9 +49,11 @@ export class MatchingService {
       },
     });
 
-    // Trigger matching engine in background to avoid hanging the request
-    this.runMatchingEngine(requirement.id).catch(err => {
-        this.logger.error(`Matching engine background failed for ${requirement.id}`, err);
+    // Trigger matching engine in background using setImmediate to ensure total decoupling
+    setImmediate(() => {
+        this.runMatchingEngine(requirement.id).catch(err => {
+            this.logger.error(`Matching engine background failed for ${requirement.id}`, err);
+        });
     });
 
     return requirement;
