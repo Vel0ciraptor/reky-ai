@@ -119,6 +119,7 @@ model Property {
   tags               PropertyTag[]
   transactions       Transaction[]
   images             PropertyImage[]
+  matches            Match[]
 
   @@index([lat, lng])
   @@index([isDemo])
@@ -265,8 +266,10 @@ model Requerimiento {
 
 model Match {
   id              String   @id @default(uuid())
-  captadorId      String   @map("captador_id")
-  captador        Captador @relation(fields: [captadorId], references: [id])
+  captadorId      String?  @map("captador_id")
+  captador        Captador? @relation(fields: [captadorId], references: [id])
+  propertyId      String?  @map("property_id")
+  property        Property? @relation(fields: [propertyId], references: [id])
   requerimientoId String   @map("requerimiento_id")
   requerimiento   Requerimiento @relation(fields: [requerimientoId], references: [id])
   scoreMatch      Int      @map("score_match") // 0 a 100
@@ -274,5 +277,5 @@ model Match {
   notas           String?
   createdAt       DateTime @default(now()) @map("created_at")
 
-  @@unique([captadorId, requerimientoId])
+  @@unique([captadorId, requerimientoId, propertyId])
 }

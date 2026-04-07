@@ -27,7 +27,8 @@ type Requerimiento = {
 
 type Match = {
     id: string;
-    captadorId: string;
+    captadorId: string | null;
+    propertyId: string | null;
     requerimientoId: string;
     scoreMatch: number;
     estado: string;
@@ -36,10 +37,13 @@ type Match = {
     captador: {
         id: string;
         nombre: string;
-        telefono: string;
-        zonaTrabajo: string;
-        tipo: string;
-        rating: number;
+    } | null;
+    property?: {
+        id: string;
+        descripcion: string;
+        ubicacion: string;
+        precio: number;
+        tipoVivienda: string;
     };
 };
 
@@ -49,34 +53,32 @@ function getScoreColor(score: number) {
     return 'text-gray-400 border-gray-500/30 bg-gray-500/10';
 }
 
-function getScoreLabel(score: number) {
-    if (score >= 80) return 'Match Fuerte';
-    if (score >= 50) return 'Match Viable';
-    return 'No relevante';
-}
-
 function MatchCard({ match, onNotify }: { match: Match; onNotify: (id: string) => void }) {
+    const navigate = useNavigate();
+
     return (
         <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-glass-border hover:border-accent-orange/20 transition-all">
             <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold border ${getScoreColor(match.scoreMatch)}`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-[10px] font-black border ${getScoreColor(match.scoreMatch)}`}>
                     {match.scoreMatch}%
                 </div>
                 <div>
-                    <h5 className="text-sm font-semibold">{match.captador.nombre}</h5>
-                    <p className="text-[10px] text-gray-500 flex items-center gap-1">
-                        <Target size={10} /> {getScoreLabel(match.scoreMatch)} • {match.captador.tipo}
-                    </p>
+                    <h5 className="text-[10px] font-black text-white uppercase tracking-widest leading-tight">{match.property?.tipoVivienda || 'Inmueble'} en {match.property?.ubicacion || 'Zona'}</h5>
+                    <p className="text-[9px] text-gray-500 font-bold uppercase tracking-tight">USD {Number(match.property?.precio || 0).toLocaleString()} • {match.captador?.nombre || 'Captador'}</p>
                 </div>
             </div>
             <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1 text-accent-orange bg-accent-orange/10 px-2 py-1 rounded-lg text-[10px]">
-                    <Star size={10} fill="currentColor" /> {Number(match.captador.rating).toFixed(1)}
-                </div>
+                <button 
+                    onClick={() => navigate('/search')}
+                    className="p-2 text-gray-400 hover:text-accent-orange bg-white/5 hover:bg-white/10 rounded-lg transition-all border border-glass-border"
+                    title="Ver inmueble"
+                >
+                    <List size={14} />
+                </button>
                 <button 
                     onClick={() => onNotify(match.id)}
-                    className="p-2 text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all"
-                    title="Notificar captador"
+                    className="p-2 text-accent-orange bg-accent-orange/10 hover:bg-accent-orange/20 rounded-lg transition-all border border-accent-orange/20"
+                    title="Contactar"
                 >
                     <Bell size={14} />
                 </button>
@@ -91,10 +93,7 @@ function ReqCard({ req, onRefresh }: { req: Requerimiento; onRefresh: () => void
     const handleNotify = async (matchId: string) => {
         try {
             await api.patch(`/matching/matches/${matchId}/status`, { estado: 'contactado' });
-            // Simulation of notification
-            setTimeout(() => {
-                onRefresh();
-            }, 1000);
+            onRefresh();
         } catch (e) {
             console.error(e);
         }
@@ -106,7 +105,7 @@ function ReqCard({ req, onRefresh }: { req: Requerimiento; onRefresh: () => void
                 <div className="flex justify-between items-start">
                     <div className="flex flex-col">
                         <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-bold text-lg text-white">{req.titulo}</h4>
+                            <h4 className="font-bold text-lg text-white font-serif italic">{req.titulo}</h4>
                             <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full border ${
                                 req.prioridad === 'alta' ? 'border-red-500/50 text-red-400 bg-red-500/10' :
                                 req.prioridad === 'media' ? 'border-accent-orange/50 text-accent-orange bg-accent-orange/10' :
@@ -115,8 +114,8 @@ function ReqCard({ req, onRefresh }: { req: Requerimiento; onRefresh: () => void
                                 {req.prioridad}
                             </span>
                         </div>
-                        <p className="text-xs text-gray-500 flex items-center gap-1">
-                            <Clock size={11} /> Publicado el {new Date(req.createdAt).toLocaleDateString()}
+                        <p className="text-[10px] text-gray-500 flex items-center gap-1 font-bold uppercase tracking-wider">
+                            <Clock size={11} /> {new Date(req.createdAt).toLocaleDateString()}
                         </p>
                     </div>
                     <button onClick={() => setExpanded(!expanded)} className="p-2 bg-white/5 rounded-lg text-gray-400 hover:text-white transition-all">
@@ -125,32 +124,32 @@ function ReqCard({ req, onRefresh }: { req: Requerimiento; onRefresh: () => void
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                    <span className="text-xs bg-accent-orange/20 text-accent-orange px-3 py-1 rounded-full font-medium border border-accent-orange/30 uppercase">
+                    <span className="text-[10px] bg-accent-orange/20 text-accent-orange px-3 py-1 rounded-full font-black border border-accent-orange/30 uppercase tracking-tighter">
                         {req.tipoOperacion}
                     </span>
-                    <span className="text-xs bg-white/10 text-gray-300 px-3 py-1 rounded-full border border-glass-border capitalize">
-                        🏠 {req.tipoPropiedad}
+                    <span className="text-[10px] bg-white/10 text-gray-300 px-3 py-1 rounded-full border border-glass-border font-bold uppercase tracking-tighter">
+                        {req.tipoPropiedad}
                     </span>
-                    <span className="text-xs bg-white/10 text-gray-300 px-3 py-1 rounded-full border border-glass-border flex items-center gap-1">
+                    <span className="text-[10px] bg-white/10 text-gray-300 px-3 py-1 rounded-full border border-glass-border flex items-center gap-1 font-bold uppercase tracking-tighter">
                         <MapPin size={10} /> {req.zona}
                     </span>
                 </div>
 
-                <p className="text-sm text-gray-400 italic line-clamp-2">"{req.descripcion}"</p>
+                <p className="text-xs text-gray-400 italic line-clamp-2 leading-relaxed">"{req.descripcion}"</p>
 
                 <div className="grid grid-cols-2 gap-4 pt-2">
                     <div className="flex flex-col">
-                        <span className="text-[10px] text-gray-600 uppercase">Presupuesto</span>
-                        <span className="text-sm font-semibold flex items-center gap-1">
+                        <span className="text-[9px] text-gray-600 font-black uppercase tracking-widest">Presupuesto Máx</span>
+                        <span className="text-xs font-black flex items-center gap-1 text-white">
                             <DollarSign size={12} className="text-accent-orange" />
-                            {Number(req.presupuestoMin).toLocaleString()} - {Number(req.presupuestoMax).toLocaleString()}
+                            {Number(req.presupuestoMax).toLocaleString()}
                         </span>
                     </div>
                     <div className="flex flex-col">
-                        <span className="text-[10px] text-gray-600 uppercase">Características</span>
-                        <span className="text-sm font-semibold flex items-center gap-1">
+                        <span className="text-[9px] text-gray-600 font-black uppercase tracking-widest">Hab.</span>
+                        <span className="text-xs font-black flex items-center gap-1 text-white">
                             <Bed size={12} className="text-accent-orange" />
-                            {req.habitaciones} Hab.
+                            {req.habitaciones}+
                         </span>
                     </div>
                 </div>
@@ -164,8 +163,7 @@ function ReqCard({ req, onRefresh }: { req: Requerimiento; onRefresh: () => void
                             className="flex flex-col gap-4 border-t border-glass-border/50 pt-4 mt-2"
                         >
                             <div className="flex items-center justify-between mb-2">
-                                <h5 className="text-xs font-bold uppercase tracking-widest text-gray-500">Match con Captadores ({req.matches.length})</h5>
-                                <div className="text-[10px] text-gray-600">Actualizado automáticamente</div>
+                                <h5 className="text-[9px] font-black uppercase tracking-widest text-gray-500">Inmuebles Detectados ({req.matches.length})</h5>
                             </div>
 
                             <div className="flex flex-col gap-2">
@@ -176,7 +174,7 @@ function ReqCard({ req, onRefresh }: { req: Requerimiento; onRefresh: () => void
                                 ) : (
                                     <div className="text-center py-6 border border-dashed border-glass-border rounded-xl">
                                         <Target size={24} className="mx-auto text-gray-700 mb-2 opacity-20" />
-                                        <p className="text-xs text-gray-600">Buscando captadores compatibles...</p>
+                                        <p className="text-[10px] text-gray-600 font-black uppercase tracking-widest">Buscando coincidencias...</p>
                                     </div>
                                 )}
                             </div>
@@ -301,6 +299,7 @@ function CreateRequirementForm({ onSuccess, onCancel }: { onSuccess: () => void;
 }
 
 function MatchListView({ requirements, onContact }: { requirements: Requerimiento[]; onContact: (agentId: string) => void }) {
+    const navigate = useNavigate();
     const allMatches = requirements.flatMap(r => r.matches);
     const fuerteMatches = allMatches.filter(m => m.scoreMatch >= 80);
     const sortedMatches = [...fuerteMatches].sort((a, b) => b.scoreMatch - a.scoreMatch);
@@ -309,14 +308,14 @@ function MatchListView({ requirements, onContact }: { requirements: Requerimient
         return (
             <div className="text-center py-20 glass-card border-dashed border-glass-border">
                 <Target size={40} className="mx-auto text-gray-700 mb-4 opacity-20" />
-                <p className="text-gray-500">No tienes matches fuertes (al menos 80%) en este momento.</p>
+                <p className="text-gray-500 font-bold uppercase text-xs tracking-widest">No hay matches del 80% aún.</p>
             </div>
         );
     }
 
     return (
         <div className="flex flex-col gap-4">
-            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-2 px-1 flex items-center gap-2">
+            <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 px-1 flex items-center gap-2">
                 <Target size={14} className="text-green-400" /> Matches de Alta Compatibilidad (80%+)
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -324,29 +323,33 @@ function MatchListView({ requirements, onContact }: { requirements: Requerimient
                     <div key={m.id} className="glass-card p-4 border border-glass-border flex flex-col gap-3 hover:border-green-500/20 transition-all">
                         <div className="flex justify-between items-start">
                             <div className="flex items-center gap-3">
-                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-sm font-bold border ${getScoreColor(m.scoreMatch)}`}>
+                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-sm font-black border ${getScoreColor(m.scoreMatch)}`}>
                                     {m.scoreMatch}%
                                 </div>
                                 <div>
-                                    <h4 className="font-bold text-white">{m.captador.nombre}</h4>
-                                    <p className="text-[11px] text-gray-500">{m.captador.tipo} • {m.captador.zonaTrabajo}</p>
+                                    <h4 className="font-black text-white text-xs uppercase tracking-tight">{m.property?.tipoVivienda || 'Inmueble'} en {m.property?.ubicacion || 'Zona'}</h4>
+                                    <p className="text-[10px] text-gray-500 font-bold">USD {Number(m.property?.precio || 0).toLocaleString()}</p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-1 text-accent-orange text-xs font-bold bg-accent-orange/10 px-2 py-1 rounded-lg border border-accent-orange/20">
-                                <Star size={12} fill="currentColor" /> {Number(m.captador.rating).toFixed(1)}
+                            <div className="text-[9px] text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20 font-black uppercase">
+                                Excelente
                             </div>
                         </div>
-                        <div className="mt-2 text-xs text-gray-400 bg-white/5 p-2 rounded-lg border border-glass-border line-clamp-1">
-                            {requirements.find(r => r.id === m.requerimientoId)?.titulo}
-                        </div>
-                        <div className="flex gap-2">
+                        
+                        <div className="flex gap-2 mt-2">
                              <button 
-                                onClick={() => onContact(m.captador.id)}
-                                className="flex-1 bg-accent-orange text-white py-2 rounded-lg text-xs font-bold hover:bg-accent-light transition-all flex items-center justify-center gap-2"
+                                onClick={() => navigate('/search')}
+                                className="flex-1 bg-white/5 border border-glass-border text-white py-2 rounded-lg text-[10px] font-black uppercase hover:bg-white/10 transition-all"
                              >
-                                 <Bell size={14} /> Contactar
+                                 Explorar Inmueble
                              </button>
-                         </div>
+                             <button
+                                onClick={() => onContact(m.captador?.id || '')}
+                                className="px-4 bg-accent-orange text-white py-2 rounded-lg text-[10px] font-black uppercase hover:bg-accent-orange-hover transition-all flex items-center justify-center gap-1"
+                             >
+                                 <Bell size={12} /> Contactar
+                             </button>
+                        </div>
                     </div>
                 ))}
             </div>
@@ -355,6 +358,7 @@ function MatchListView({ requirements, onContact }: { requirements: Requerimient
 }
 
 function SuggestionsView({ requirements }: { requirements: Requerimiento[] }) {
+    const navigate = useNavigate();
     const allMatches = requirements.flatMap(r => r.matches);
     const viableMatches = allMatches.filter(m => m.scoreMatch >= 50 && m.scoreMatch < 80);
     const sorted = [...viableMatches].sort((a, b) => b.scoreMatch - a.scoreMatch);
@@ -363,12 +367,12 @@ function SuggestionsView({ requirements }: { requirements: Requerimiento[] }) {
         <div className="flex flex-col gap-6">
             <div className="glass-card p-6 border border-glass-border bg-gradient-to-br from-blue-500/5 to-transparent">
                 <div className="flex items-center gap-4 mb-2">
-                    <div className="p-2.5 bg-blue-500/20 rounded-xl text-blue-400">
+                    <div className="p-2.5 bg-blue-500/20 rounded-xl text-blue-400 uppercase font-black text-xs">
                         <Star size={24} />
                     </div>
                     <div>
-                        <h2 className="text-xl font-bold text-white">Sugerencias Viables</h2>
-                        <p className="text-gray-500 text-xs">Captadores con puntaje entre 50% y 79% que podrían ser interesantes.</p>
+                        <h2 className="text-xl font-black text-white italic">Sugerencias Viables</h2>
+                        <p className="text-gray-500 text-[10px] font-bold uppercase tracking-wider">Inmuebles con puntaje entre 50% y 79% compatibles.</p>
                     </div>
                 </div>
             </div>
@@ -379,30 +383,33 @@ function SuggestionsView({ requirements }: { requirements: Requerimiento[] }) {
                         <div key={m.id} className="glass-card p-4 border border-glass-border flex flex-col gap-3 hover:border-blue-500/20 transition-all">
                              <div className="flex justify-between items-start">
                                 <div className="flex items-center gap-3">
-                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-sm font-bold border ${getScoreColor(m.scoreMatch)}`}>
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-sm font-black border ${getScoreColor(m.scoreMatch)}`}>
                                         {m.scoreMatch}%
                                     </div>
                                     <div>
-                                        <h4 className="font-bold text-white">{m.captador.nombre}</h4>
-                                        <p className="text-[11px] text-gray-500">{m.captador.tipo}</p>
+                                        <h4 className="font-black text-white text-xs uppercase tracking-tight">{m.property?.tipoVivienda || 'Vivienda'} en {m.property?.ubicacion || 'Zona'}</h4>
+                                        <p className="text-[10px] text-gray-500 font-bold">USD {Number(m.property?.precio || 0).toLocaleString()}</p>
                                     </div>
                                 </div>
-                                <div className="text-[10px] text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">
+                                <div className="text-[9px] text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20 font-black uppercase">
                                     Viable
                                 </div>
                             </div>
-                            <div className="mt-1 text-[11px] text-gray-400 italic">
+                            <div className="mt-1 text-[10px] text-gray-500 italic pb-2">
                                 "{m.notas || 'Buen match por ubicación geográfica.'}"
                             </div>
-                            <button className="w-full bg-white/5 text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 py-2 rounded-lg text-xs font-bold transition-all">
-                                Explorar sugerencia
+                            <button 
+                                onClick={() => navigate('/search')}
+                                className="w-full bg-white/5 text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 py-2.5 rounded-lg text-[10px] font-black uppercase transition-all"
+                            >
+                                Explorar inmueble
                             </button>
                         </div>
                     ))}
                  </div>
             ) : (
                 <div className="text-center py-20 border border-dashed border-glass-border rounded-2xl">
-                    <p className="text-gray-500 text-sm">No hay sugerencias viables en este rango (50-79%) aún.</p>
+                    <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">No hay sugerencias en este rango todavía.</p>
                 </div>
             )}
         </div>

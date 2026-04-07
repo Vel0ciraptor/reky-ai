@@ -80,113 +80,66 @@ export class MatchingService {
     // OR I will just match against all Agents and consider them "Captadores" conceptually.
     // Actually, I'll use the NEW Captador table as the target for Matches.
     
-    const captadores = await this.prisma.captador.findMany({
-        where: { activo: true }
+    // 1. Get all active properties that are not demo and match the operation type
+    const properties = await this.prisma.property.findMany({
+        where: {
+            status: 'disponible',
+            isDemo: false,
+            tipo: req.tipoOperacion === 'alquiler' ? 'alquiler' : 'venta',
+        },
+        include: {
+            agents: { include: { agent: true } }
+        }
     });
 
-    for (const captador of captadores) {
-      let score = 0;
+    for (const prop of properties) {
+        let pts = 0;
+        
+        // +30 si zona coincide
+        if (prop.ubicacion === req.zona) pts += 30;
+        
+        // +25 si presupuesto compatible
+        const price = Number(prop.precio);
+        if (price >= Number(req.presupuestoMin) && price <= Number(req.presupuestoMax)) {
+            pts += 25;
+        }
+        
+        // +15 si tipo_propiedad coincide
+        if (prop.tipoVivienda?.toLowerCase().includes(req.tipoPropiedad.toLowerCase())) {
+            pts += 15;
+        }
 
-      // Base: zona de trabajo profile info
-      if (captador.zonaTrabajo === req.zona) {
-        score += 20; // +20 si captador trabaja en esa zona
-      }
+        // +10 si habitaciones coincide
+        if (prop.dormitorios === req.habitaciones) {
+            pts += 10;
+        }
 
-      // To implement the other points, we need properties.
-      // Let's check if this captador is linked to an Agent to find their properties.
-      // Since the new schema didn't include agentId, I'll allow a fuzzy match by phone or name,
-      // or assume the Agent created the Captador profile.
-      
-      // FOR NOW, let's implement the logic assuming we can find properties for this captador.
-      // I'll find properties where the 'location' (ubicacion) matches the requirement zone, etc.
-      
-      // Let's find properties managed by the Agent associated with this Captador (if we can find one)
-      // or just properties in general that match, and then identify their owners.
-      
-      // NEW PROPOSED LOGIC:
-      // A Match is between a Requerimiento and a Captador.
-      // To get the score, we find the BEST property of that Captador that matches the Requerimiento.
-
-      // Let's check if the Captador has a linked Agent first. 
-      // I'll assume for simplicity that we match based on the Captador's "specialty" 
-      // if they don't have properties, OR we search the Property table.
-      
-      // But the requirement says "+30 if zona matches", "+25 if budget compat", etc.
-      // These ARE property-specific checks.
-
-      // If we don't have a direct link in the schema yet, I'll look for properties 
-      // belonging to an Agent with the same name or phone as the Captador.
-      
-      const agent = await this.prisma.agent.findFirst({
-          where: {
-              OR: [
-                  { phone: captador.telefono },
-                  { name: { contains: captador.nombre } }
-              ]
-          }
-      });
-
-      if (agent) {
-          const properties = await this.prisma.property.findMany({
-              where: {
-                  agents: {
-                      some: { agentId: agent.id }
-                  },
-                  tipo: req.tipoOperacion === 'alquiler' ? 'alquiler' : 'venta'
-              }
-          });
-
-          let maxPropertyPoints = 0;
-          for (const prop of properties) {
-              let pts = 0;
-              // +30 si zona coincide
-              if (prop.ubicacion === req.zona) pts += 30;
-              
-              // +25 si presupuesto compatible
-              const price = Number(prop.precio);
-              if (price >= Number(req.presupuestoMin) && price <= Number(req.presupuestoMax)) {
-                  pts += 25;
-              }
-              
-              // +15 si tipo_propiedad coincide
-              if (prop.tipoVivienda?.toLowerCase().includes(req.tipoPropiedad.toLowerCase())) {
-                  pts += 15;
-              }
-
-              // +10 si habitaciones coincide
-              if (prop.dormitorios === req.habitaciones) {
-                  pts += 10;
-              }
-              
-              if (pts > maxPropertyPoints) maxPropertyPoints = pts;
-          }
-          score += maxPropertyPoints;
-      }
-
-      // Cap score at 100
-      score = Math.min(score, 100);
-
-      if (score > 0) {
-          await this.prisma.match.upsert({
-              where: {
-                  captadorId_requerimientoId: {
-                      captadorId: captador.id,
-                      requerimientoId: req.id
-                  }
-              },
-              create: {
-                  captadorId: captador.id,
-                  requerimientoId: req.id,
-                  scoreMatch: score,
-                  estado: 'nuevo'
-              },
-              update: {
-                  scoreMatch: score
-              }
-          });
-          
-          this.logger.log(`Created match for Captador ${captador.nombre} with score ${score}`);
-      }
+        // If it's a good match (> 50 pts), we check if we have a captador/agent for it
+        if (pts >= 50) {
+            const firstAgent = prop.agents[0]?.agent;
+            
+            await this.prisma.match.upsert({
+                where: {
+                    captadorId_requerimientoId_propertyId: {
+                        captadorId: null, // We match by property now
+                        requerimientoId: req.id,
+                        propertyId: prop.id
+                    }
+                },
+                create: {
+                    requerimientoId: req.id,
+                    propertyId: prop.id,
+                    scoreMatch: pts,
+                    estado: 'nuevo',
+                    notas: `Match con la propiedad en ${prop.ubicacion}`
+                },
+                update: {
+                    scoreMatch: pts
+                }
+            });
+            
+            this.logger.log(`Created property match: ${prop.id} with score ${pts}`);
+        }
     }
   }
 
