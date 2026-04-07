@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { connectSocket } from '../lib/socket';
 import api from '../lib/api';
+import { showNotification } from '../lib/notifications';
 
 interface LayoutProps {
     children: ReactNode;
@@ -84,18 +85,32 @@ const Layout = ({ children }: LayoutProps) => {
 
                 playNotificationSound(isReq ? 'requirement' : 'property');
 
+                showNotification('Nuevo Mensaje', {
+                    body: msg.content,
+                    tag: 'chat-' + msg.senderId,
+                });
+
                 // Immediately refresh count from server to be accurate
                 setTimeout(syncUnread, 500);
             }
         };
 
+        const handleMatch = (data: any) => {
+            showNotification('¡Nuevo Match Encontrado!', {
+                body: `Se ha encontrado una propiedad para tu requerimiento: ${data.requerimientoTitulo || 'Ver detalles'}`,
+                icon: '/pwa-192x192.png'
+            });
+        };
+
         socket.on('new_conversation_message', handleIncoming);
         socket.on('new_message', handleIncoming); // Fallback for some flows
+        socket.on('new_match', handleMatch);
 
         return () => {
             clearInterval(intv);
             socket.off('new_conversation_message', handleIncoming);
             socket.off('new_message', handleIncoming);
+            socket.off('new_match', handleMatch);
         };
     }, [agent?.id]);
 

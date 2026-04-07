@@ -427,30 +427,29 @@ export default function RequirementsBoard() {
 
     return (
         <div className="flex flex-col w-full">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 mb-8">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 mb-8 uppercase tracking-tight">
                 <div className="flex-1">
-                    <h1 className="text-3xl font-extrabold text-white mb-2">Muro de Requerimientos</h1>
-                    <p className="text-gray-500 text-sm">Gestiona tus necesidades y encuentra captadores automáticamente.</p>
+                    <h1 className="text-3xl font-black text-white mb-2 italic">Muro de Requerimientos</h1>
+                    <p className="text-gray-500 text-sm font-medium">Gestiona tus necesidades y encuentra captadores automáticamente.</p>
                     
-                    <div className="flex gap-2 mt-6 p-1 bg-white/5 rounded-xl border border-glass-border w-fit">
+                    <div className="flex gap-2 mt-6 p-1.5 bg-white/5 rounded-2xl border border-glass-border w-fit backdrop-blur-xl">
                         {[
                             { id: 'requerimientos', label: 'Mis Requerimientos', icon: List },
-                            { id: 'matches', label: 'Mis Matches', icon: Target },
-                            { id: 'sugerencias', label: 'Sugerencias', icon: Star }
+                            { id: 'matches', label: 'Matches & Sugerencias', icon: Target },
                         ].map(tab => (
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id as any)}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black transition-all ${
                                     activeTab === tab.id 
-                                    ? 'bg-accent-orange text-white shadow-lg shadow-accent-orange/20' 
+                                    ? 'bg-accent-orange text-white shadow-lg shadow-accent-orange/30' 
                                     : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
                                 }`}
                             >
-                                <tab.icon size={14} />
+                                <tab.icon size={15} />
                                 {tab.label}
                                 {tab.id === 'requerimientos' && requirements.length > 0 && (
-                                    <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[9px] ${activeTab === tab.id ? 'bg-white/20' : 'bg-white/10'}`}>
+                                    <span className={`ml-1.5 px-2 py-0.5 rounded-full text-[10px] ${activeTab === tab.id ? 'bg-white/25' : 'bg-white/10'}`}>
                                         {requirements.length}
                                     </span>
                                 )}
@@ -462,7 +461,7 @@ export default function RequirementsBoard() {
 
             <AnimatePresence>
                 {showForm && (
-                    <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+                    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}>
                         <CreateRequirementForm onSuccess={() => { setShowForm(false); fetchRequirements(); }} onCancel={() => setShowForm(false)} />
                     </motion.div>
                 )}
@@ -470,37 +469,56 @@ export default function RequirementsBoard() {
 
             {loading ? (
                 <div className="flex flex-col items-center justify-center p-20 gap-4">
-                    <Loader2 size={40} className="animate-spin text-accent-orange" />
-                    <p className="text-gray-500 animate-pulse">Analizando mercado...</p>
+                    <div className="relative">
+                        <Loader2 size={48} className="animate-spin text-accent-orange" />
+                        <div className="absolute inset-0 blur-xl bg-accent-orange/20 animate-pulse" />
+                    </div>
+                    <p className="text-gray-500 font-bold animate-pulse uppercase tracking-widest text-[10px]">Analizando mercado...</p>
                 </div>
             ) : activeTab === 'requerimientos' ? (
                 requirements.length === 0 ? (
                     <div className="glass-card p-16 text-center flex flex-col items-center border border-dashed border-glass-border">
-                        <Target size={48} className="text-gray-700 mb-6" />
-                        <h3 className="text-lg font-bold text-gray-400 mb-2">No tienes requerimientos activos</h3>
-                        <p className="text-gray-600 text-sm max-w-xs mb-8">Publica lo que tus clientes buscan para que Reky encuentre los mejores captadores.</p>
-                        <button onClick={() => setShowForm(true)} className="btn-primary py-3 px-8 text-sm flex gap-2 items-center"><Plus size={18} />Publicar primer requerimiento</button>
+                        <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-6">
+                            <Target size={32} className="text-gray-600" />
+                        </div>
+                        <h3 className="text-lg font-bold text-white mb-2">No tienes requerimientos activos</h3>
+                        <p className="text-gray-500 text-sm max-w-xs mb-8">Publica lo que tus clientes buscan para que Reky encuentre los mejores captadores.</p>
+                        <button onClick={() => setShowForm(true)} className="bg-accent-orange hover:bg-accent-orange-hover text-white py-3 px-8 rounded-xl font-bold text-sm shadow-xl shadow-accent-orange/20 flex gap-2 items-center transition-all active:scale-95">
+                            <Plus size={20} /> Publicar primer requerimiento
+                        </button>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 gap-4 pb-24">
+                    <div className="grid grid-cols-1 gap-6 pb-24">
                         {requirements.map(req => (
                             <ReqCard key={req.id} req={req} onRefresh={fetchRequirements} />
                         ))}
                     </div>
                 )
-            ) : activeTab === 'matches' ? (
-                <MatchListView requirements={requirements} onContact={(id) => navigate(`/chat?agent=${id}`)} />
             ) : (
-                <SuggestionsView requirements={requirements} />
+                <div className="flex flex-col gap-10 pb-24">
+                    <MatchListView requirements={requirements} onContact={(id) => navigate(`/chat?agent=${id}`)} />
+                    
+                    <div className="h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                    
+                    <div className="space-y-6">
+                        <div className="flex items-center gap-3 px-2">
+                             <Star size={18} className="text-yellow-500" />
+                             <h3 className="text-sm font-black text-white uppercase tracking-widest">Sugerencias del Sistema</h3>
+                        </div>
+                        <SuggestionsView requirements={requirements} />
+                    </div>
+                </div>
             )}
 
             {/* FAB Button */}
-            <button
-                onClick={() => setShowForm(true)}
-                className="fixed bottom-24 right-6 z-50 w-14 h-14 bg-accent-orange rounded-full flex items-center justify-center shadow-2xl shadow-accent-orange/40 hover:scale-110 active:scale-95 transition-transform"
-            >
-                <Plus size={28} className="text-white" />
-            </button>
+            {!showForm && (
+                <button
+                    onClick={() => setShowForm(true)}
+                    className="fixed bottom-24 right-6 z-50 w-16 h-16 bg-accent-orange rounded-full flex items-center justify-center shadow-2xl shadow-accent-orange/40 hover:scale-110 active:scale-95 transition-all text-white border-2 border-white/10"
+                >
+                    <Plus size={32} strokeWidth={3} />
+                </button>
+            )}
         </div>
     );
 }

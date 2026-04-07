@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
+import { requestNotificationPermission } from './lib/notifications';
 import Layout from './components/Layout';
 import AuthPage from './pages/AuthPage';
 import SearchPage from './pages/SearchPage';
@@ -27,6 +29,10 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 function App() {
+  useEffect(() => {
+    requestNotificationPermission();
+  }, []);
+
   return (
     <>
     <Routes>
