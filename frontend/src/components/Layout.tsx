@@ -15,7 +15,7 @@ const navItems = [
     { name: 'Chat', icon: MessageSquare, path: '/chat' },
     { name: 'Buscar', icon: Search, path: '/search' },
     { name: 'Req.', icon: ClipboardList, path: '/requirements' },
-    { name: 'Publicar', icon: Plus, path: '/publish' },
+    { name: 'Crear', icon: Plus, path: '/publish' },
     { name: 'Perfil', icon: User, path: '/profile' },
 ];
 
@@ -131,56 +131,46 @@ const Layout = ({ children }: LayoutProps) => {
                     {navItems.map((item) => {
                         const Icon = item.icon;
                         const isActive = location.pathname === item.path;
-                        const isPublish = item.path === '/publish';
                         const isChat = item.path === '/chat';
 
                         return (
                             <Link
                                 key={item.path}
                                 to={item.path}
-                                className="relative flex flex-col items-center gap-0.5 group"
-                                style={{ minWidth: 56, padding: '4px 0' }}
+                                className="relative flex flex-col items-center gap-1 group py-1"
+                                style={{ minWidth: 64 }}
                             >
-                                {/* Publish button gets special floating treatment */}
-                                {isPublish ? (
-                                    <div className="w-12 h-12 -mt-6 rounded-2xl bg-accent-orange flex items-center justify-center shadow-lg shadow-accent-orange/40 border-4 border-bg-dark group-hover:scale-110 transition-transform duration-200">
-                                        <Icon size={22} className="text-white" />
-                                    </div>
-                                ) : (
-                                    <div className={`relative flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200 ${isActive ? 'bg-accent-orange/15' : 'group-hover:bg-white/5'}`}>
-                                        {isActive && (
-                                            <motion.div
-                                                layoutId="nav-indicator"
-                                                className="absolute inset-0 rounded-xl bg-accent-orange/15"
-                                                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                                            />
-                                        )}
-                                        <Icon
-                                            size={20}
-                                            className={`relative z-10 transition-colors duration-200 ${isActive ? 'text-accent-orange' : 'text-gray-500 group-hover:text-gray-300'}`}
+                                <div className={`relative flex items-center justify-center w-12 h-12 rounded-[1.25rem] transition-all duration-300 ${isActive ? 'bg-accent-orange shadow-lg shadow-accent-orange/30' : 'hover:bg-white/5'}`}>
+                                    {isActive && (
+                                        <motion.div
+                                            layoutId="nav-bg"
+                                            className="absolute inset-0 rounded-[1.25rem] bg-accent-orange"
+                                            transition={{ type: 'spring', stiffness: 350, damping: 30 }}
                                         />
+                                    )}
+                                    <Icon
+                                        size={22}
+                                        className={`relative z-10 transition-colors duration-300 ${isActive ? 'text-white' : 'text-gray-500 group-hover:text-gray-300'}`}
+                                    />
 
-                                        {/* Unread Badge Overlay */}
-                                        {isChat && unreadCount > 0 && (
-                                            <AnimatePresence>
-                                                <motion.div
-                                                    initial={{ scale: 0 }}
-                                                    animate={{ scale: 1 }}
-                                                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center border-2 border-bg-dark z-20"
-                                                >
-                                                    <span className="text-[10px] font-bold text-white leading-none">
-                                                        {unreadCount > 9 ? '9+' : unreadCount}
-                                                    </span>
-                                                </motion.div>
-                                            </AnimatePresence>
-                                        )}
-                                    </div>
-                                )}
-                                {!isPublish && (
-                                    <span className={`text-[10px] font-medium transition-colors duration-200 ${isActive ? 'text-accent-orange' : 'text-gray-600 group-hover:text-gray-400'}`}>
-                                        {item.name}
-                                    </span>
-                                )}
+                                    {/* Unread Badge Overlay */}
+                                    {isChat && unreadCount > 0 && (
+                                        <AnimatePresence>
+                                            <motion.div
+                                                initial={{ scale: 0 }}
+                                                animate={{ scale: 1 }}
+                                                className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center border-2 border-[#14141a] z-20"
+                                            >
+                                                <span className="text-[10px] font-bold text-white leading-none">
+                                                    {unreadCount > 9 ? '9+' : unreadCount}
+                                                </span>
+                                            </motion.div>
+                                        </AnimatePresence>
+                                    )}
+                                </div>
+                                <span className={`text-[10px] font-bold tracking-tight transition-colors duration-300 ${isActive ? 'text-accent-orange' : 'text-gray-600 group-hover:text-gray-400'}`}>
+                                    {item.name}
+                                </span>
                             </Link>
                         );
                     })}

@@ -711,83 +711,90 @@ const ProfilePage = () => {
                    NORMAL AGENT PROFILE
                    ═══════════════════════════════════════════════ */
                 <>
-                    {/* ── PREMIUM STATS GRID ──────────────────────────────────── */}
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
-                        {[
-                            { icon: Home, color: 'text-blue-400', bg: 'bg-blue-400', val: stats.properties, label: 'Propiedades', desc: 'Publicadas activas' },
-                            { icon: TrendingUp, color: 'text-emerald-400', bg: 'bg-emerald-400', val: stats.sales, label: 'Ventas', desc: 'Tratos cerrados' },
-                            { icon: Trophy, color: 'text-yellow-400', bg: 'bg-yellow-400', val: stats.points, label: 'Puntos', desc: 'Nivel actual' },
-                            { icon: Wallet, color: 'text-accent-orange', bg: 'bg-accent-orange', val: `Bs. ${stats.walletBalance}`, label: 'Wallet', desc: 'Saldo disponible' },
-                        ].map((s, i) => (
-                            <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * i }}
-                                className="relative p-4 sm:p-5 rounded-3xl overflow-hidden group hover:-translate-y-1 transition-transform duration-300"
-                                style={{ background: 'linear-gradient(180deg, rgba(20,20,25,0.8) 0%, rgba(15,15,20,0.9) 100%)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    {/* ── UNIFIED DASHBOARD SUMMARY ──────────────────────────────────── */}
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+                        className="relative p-6 sm:p-8 rounded-[2.5rem] mb-8 overflow-hidden"
+                        style={{ background: 'linear-gradient(165deg, rgba(25,25,35,0.95), rgba(15,15,25,0.9))', border: '1px solid rgba(255,255,255,0.06)', boxShadow: '0 40px 100px -20px rgba(0,0,0,0.4)' }}>
+                        
+                        {/* Background Accents */}
+                        <div className="absolute top-0 right-0 w-[500px] h-full bg-accent-orange/5 rounded-full blur-[100px] -mr-40 pointer-events-none" />
+                        <div className="absolute bottom-0 left-0 w-40 h-40 bg-blue-500/5 rounded-full blur-[60px] -ml-20 pointer-events-none" />
 
-                                {/* Glow Effect */}
-                                <div className={`absolute -top-10 -right-10 w-24 h-24 ${s.bg} rounded-full blur-[40px] opacity-10 group-hover:opacity-20 transition-opacity duration-300`} />
-
-                                <div className="flex justify-between items-start mb-4 relative z-10">
-                                    <div className={`w-10 h-10 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-center shadow-inner`}>
-                                        <s.icon size={18} className={s.color} />
+                        {/* Top Section: Key Stats */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10 relative z-10">
+                            {[
+                                { icon: Home, color: 'text-blue-400', bg: 'bg-blue-400/10', val: stats.properties, label: 'Propiedades', desc: 'Activas' },
+                                { icon: TrendingUp, color: 'text-emerald-400', bg: 'bg-emerald-400/10', val: stats.sales, label: 'Ventas', desc: 'Cerradas' },
+                                { icon: Trophy, color: 'text-yellow-400', bg: 'bg-yellow-400/10', val: stats.points, label: 'Puntos', desc: 'Acumulados' },
+                                { icon: Wallet, color: 'text-accent-orange', bg: 'bg-accent-orange/10', val: `Bs. ${stats.walletBalance}`, label: 'Wallet', desc: 'Disponible' },
+                            ].map((s, i) => (
+                                <div key={i} className="flex flex-col">
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <div className={`w-10 h-10 rounded-2xl ${s.bg} flex items-center justify-center border border-white/5 shadow-lg`}>
+                                            <s.icon size={18} className={s.color} />
+                                        </div>
+                                        <span className="text-[10px] sm:text-xs text-gray-400 font-bold uppercase tracking-widest">{s.label}</span>
                                     </div>
-                                    {i === 2 && stats.points >= 500 && <span className="text-[9px] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 font-bold tracking-wider">DIAMANTE</span>}
+                                    <div className="flex flex-col">
+                                        <p className="text-2xl sm:text-3xl font-black text-white tracking-tight tabular-nums">{s.val}</p>
+                                        <p className="text-[10px] text-gray-500 mt-0.5">{s.desc}</p>
+                                    </div>
                                 </div>
+                            ))}
+                        </div>
 
-                                <div className="relative z-10">
-                                    <p className="text-2xl sm:text-3xl font-bold text-white tracking-tight mb-0.5" style={{ textShadow: `0 4px 20px ${s.bg}40` }}>{s.val}</p>
-                                    <p className="text-xs text-gray-400 font-medium">{s.label}</p>
-                                    <p className="text-[9px] text-gray-500 mt-1">{s.desc}</p>
-                                </div>
-                            </motion.div>
-                        ))}
-                    </div>
+                        {/* Divider */}
+                        <div className="h-px w-full bg-gradient-to-r from-transparent via-white/5 to-transparent mb-8 relative z-10" />
 
-                    {/* ── BENTO WIDGETS (Progress & Chart) ────────────────────── */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
-
-                        {/* Progress Widget */}
-                        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-                            className="lg:col-span-2 relative p-5 sm:p-6 rounded-3xl overflow-hidden"
-                            style={{ background: 'linear-gradient(145deg, rgba(20,20,25,0.9), rgba(10,10,15,0.8))', border: '1px solid rgba(255,255,255,0.05)' }}>
-                            <div className="absolute top-0 right-0 w-40 h-40 bg-yellow-500/5 rounded-full blur-[50px] pointer-events-none" />
-
-                            <div className="flex justify-between items-end mb-4 relative z-10">
-                                <div>
-                                    <h3 className="text-sm font-bold text-white/90 flex items-center gap-2 mb-1">
-                                        <Star size={16} className="text-yellow-400" /> Progreso de Nivel
-                                    </h3>
-                                    <p className="text-xs text-gray-500">Rango Actual: {stats.points >= 500 ? 'Diamante 💎' : stats.points >= 200 ? 'Oro 🥇' : stats.points >= 50 ? 'Plata 🥈' : 'Bronce 🥉'}</p>
+                        {/* Bottom Section: Level Progress */}
+                        <div className="relative z-10">
+                            <div className="flex justify-between items-end mb-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-yellow-500/10 flex items-center justify-center text-yellow-500 border border-yellow-500/20">
+                                        <Star size={20} />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-black text-white tracking-wide uppercase">Progreso de Nivel</h4>
+                                        <p className="text-[11px] text-gray-500">Rango Actual: <span className="text-yellow-500 font-bold">{stats.points >= 500 ? 'Diamante' : stats.points >= 200 ? 'Oro' : stats.points >= 50 ? 'Plata' : 'Bronce'}</span></p>
+                                    </div>
                                 </div>
                                 <div className="text-right">
-                                    <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-accent-orange">{stats.points}</span>
-                                    <span className="text-xs text-gray-500 font-medium ml-1">/ 500 pts</span>
+                                    <div className="flex items-baseline gap-1 justify-end">
+                                        <span className="text-2xl sm:text-3xl font-black text-white">{stats.points}</span>
+                                        <span className="text-xs text-gray-500 font-bold">/ 500 PTS</span>
+                                    </div>
+                                    {stats.points < 500 && (
+                                        <p className="text-[10px] text-yellow-500/60 font-bold uppercase tracking-tighter">Faltan {500 - stats.points} puntos para Diamante</p>
+                                    )}
                                 </div>
                             </div>
 
-                            <div className="relative w-full h-3 sm:h-4 bg-black/40 rounded-full overflow-hidden border border-white/5 shadow-inner mt-2 z-10">
+                            {/* Progress Bar */}
+                            <div className="relative w-full h-4 bg-black/40 rounded-full overflow-hidden border border-white/5 shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)]">
                                 <motion.div
                                     initial={{ width: 0 }}
                                     animate={{ width: `${Math.min(100, (stats.points / 500) * 100)}%` }}
-                                    transition={{ duration: 1.5, ease: "easeOut" }}
-                                    className="absolute top-0 left-0 h-full bg-gradient-to-r from-accent-orange via-yellow-500 to-yellow-400 rounded-full relative overflow-hidden"
+                                    transition={{ duration: 1.5, ease: "circOut" }}
+                                    className="absolute top-0 left-0 h-full bg-gradient-to-r from-accent-orange via-yellow-500 to-yellow-400 rounded-full"
                                 >
+                                    {/* Glass Shine Animation */}
                                     <motion.div
                                         animate={{ x: ['-100%', '200%'] }}
-                                        transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
-                                        className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-[-20deg]"
+                                        transition={{ repeat: Infinity, duration: 2.5, ease: "linear" }}
+                                        className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-[-30deg]"
                                     />
                                 </motion.div>
                             </div>
+                            
+                            <p className="text-[10px] text-gray-600 mt-4 italic font-medium">✨ Los puntos se actualizan automáticamente al registrar ventas o publicar nuevas propiedades.</p>
+                        </div>
+                    </motion.div>
 
-                            <p className="text-[10px] sm:text-xs text-gray-500 mt-4 flex justify-between relative z-10">
-                                <span>Multiplica tus puntos publicando y vendiendo propiedades.</span>
-                                {stats.points < 500 && <span className="font-medium text-yellow-500/70">{500 - stats.points} pts para Diamante</span>}
-                            </p>
-                        </motion.div>
-
+                    {/* ── BENTO WIDGETS (Chart) ────────────────────── */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
                         {/* Mini Activity Chart */}
                         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
-                            className="hidden lg:flex flex-col relative p-5 sm:p-6 rounded-3xl"
+                            className="lg:col-span-1 hidden lg:flex flex-col relative p-5 sm:p-6 rounded-3xl"
                             style={{ background: 'linear-gradient(145deg, rgba(20,20,25,0.9), rgba(10,10,15,0.8))', border: '1px solid rgba(255,255,255,0.05)' }}>
                             <div className="flex items-center gap-2 mb-4">
                                 <BarChart3 size={14} className="text-blue-400" />
