@@ -189,7 +189,7 @@ function ReqCard({ req, onRefresh }: { req: Requerimiento; onRefresh: () => void
 }
 
 function CreateRequirementForm({ onSuccess, onCancel }: { onSuccess: () => void; onCancel: () => void }) {
-    const { register, handleSubmit } = useForm({
+    const { register, handleSubmit, formState: { errors } } = useForm({
         defaultValues: {
             titulo: '',
             tipoOperacion: 'compra',
@@ -227,7 +227,8 @@ function CreateRequirementForm({ onSuccess, onCancel }: { onSuccess: () => void;
                 <div className="space-y-4">
                     <div>
                         <label className="text-xs font-bold uppercase text-gray-500 mb-2 block">Título del Requerimiento</label>
-                        <input {...register('titulo', { required: true })} placeholder="Ej: Departamento en Equipetrol" className="w-full bg-white/5 border border-glass-border px-4 py-3 rounded-xl focus:border-accent-orange outline-none transition-all" />
+                        <input {...register('titulo', { required: 'El título es obligatorio' })} placeholder="Ej: Departamento en Equipetrol" className="w-full bg-white/5 border border-glass-border px-4 py-3 rounded-xl focus:border-accent-orange outline-none transition-all" />
+                        {errors.titulo && <p className="text-[10px] text-red-500 mt-1 ml-1">{errors.titulo.message}</p>}
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
@@ -251,16 +252,19 @@ function CreateRequirementForm({ onSuccess, onCancel }: { onSuccess: () => void;
                 <div className="space-y-4">
                     <div>
                         <label className="text-xs font-bold uppercase text-gray-500 mb-2 block">Zona / Ubicación</label>
-                        <input {...register('zona', { required: true })} placeholder="Equipetrol, Zona Norte, etc." className="w-full bg-white/5 border border-glass-border px-4 py-3 rounded-xl focus:border-accent-orange outline-none transition-all" />
+                        <input {...register('zona', { required: 'La zona es obligatoria' })} placeholder="Equipetrol, Zona Norte, etc." className="w-full bg-white/5 border border-glass-border px-4 py-3 rounded-xl focus:border-accent-orange outline-none transition-all" />
+                        {errors.zona && <p className="text-[10px] text-red-500 mt-1 ml-1">{errors.zona.message}</p>}
                     </div>
                     <div className="grid grid-cols-3 gap-3">
                         <div className="col-span-2">
                             <label className="text-xs font-bold uppercase text-gray-500 mb-2 block">Presupuesto Máx (USD)</label>
-                            <input type="number" {...register('presupuestoMax', { required: true })} className="w-full bg-white/5 border border-glass-border px-4 py-3 rounded-xl focus:border-accent-orange outline-none" />
+                            <input type="number" {...register('presupuestoMax', { required: 'Indica el monto' })} className="w-full bg-white/5 border border-glass-border px-4 py-3 rounded-xl focus:border-accent-orange outline-none" />
+                            {errors.presupuestoMax && <p className="text-[10px] text-red-500 mt-1 ml-1">{errors.presupuestoMax.message}</p>}
                         </div>
                         <div>
                             <label className="text-xs font-bold uppercase text-gray-500 mb-2 block">Habitaciones</label>
-                            <input type="number" {...register('habitaciones', { required: true })} className="w-full bg-white/5 border border-glass-border px-4 py-3 rounded-xl focus:border-accent-orange outline-none" />
+                            <input type="number" {...register('habitaciones', { required: 'Indica cant.' })} className="w-full bg-white/5 border border-glass-border px-4 py-3 rounded-xl focus:border-accent-orange outline-none" />
+                            {errors.habitaciones && <p className="text-[10px] text-red-500 mt-1 ml-1">{errors.habitaciones.message}</p>}
                         </div>
                     </div>
                 </div>
@@ -268,7 +272,8 @@ function CreateRequirementForm({ onSuccess, onCancel }: { onSuccess: () => void;
 
             <div>
                 <label className="text-xs font-bold uppercase text-gray-500 mb-2 block">Descripción Detallada</label>
-                <textarea {...register('descripcion', { required: true })} rows={3} placeholder="Describa detalles específicos..." className="w-full bg-white/5 border border-glass-border px-4 py-3 rounded-xl focus:border-accent-orange outline-none resize-none" />
+                <textarea {...register('descripcion', { required: 'La descripción es necesaria' })} rows={3} placeholder="Describa detalles específicos..." className="w-full bg-white/5 border border-glass-border px-4 py-3 rounded-xl focus:border-accent-orange outline-none resize-none" />
+                {errors.descripcion && <p className="text-[10px] text-red-500 mt-1 ml-1">{errors.descripcion.message}</p>}
             </div>
 
             <div className="flex justify-between items-center border-t border-glass-border/50 pt-6">
